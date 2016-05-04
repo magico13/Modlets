@@ -1,15 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.31101.0
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dated_QuickSaves", "Dated_QuickSaves\Dated_QuickSaves.csproj", "{A8211030-BF7F-42BF-A7C2-8C4D31A8E696}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatedQuickSaves", "Dated_QuickSaves\DatedQuickSaves.csproj", "{A8211030-BF7F-42BF-A7C2-8C4D31A8E696}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FieldExperience", "FieldExperience\FieldExperience.csproj", "{57EE3324-428C-4319-AB8A-3D855923FD5D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sensible_Screenshot", "Sensible_Screenshot\Sensible_Screenshot.csproj", "{9D1ADE92-8916-4060-93F2-21DB91E8CA00}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SensibleScreenshot", "Sensible_Screenshot\SensibleScreenshot.csproj", "{9D1ADE92-8916-4060-93F2-21DB91E8CA00}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeToppler", "TreeToppler\TreeToppler.csproj", "{836A9667-2C1D-4810-932F-0BEEA26ECDB7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShipSaveSplicer", "ShipSaveSplicer\ShipSaveSplicer.csproj", "{00724594-164A-4D6F-AD64-254F81231A9A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{836A9667-2C1D-4810-932F-0BEEA26ECDB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{836A9667-2C1D-4810-932F-0BEEA26ECDB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{836A9667-2C1D-4810-932F-0BEEA26ECDB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00724594-164A-4D6F-AD64-254F81231A9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00724594-164A-4D6F-AD64-254F81231A9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00724594-164A-4D6F-AD64-254F81231A9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00724594-164A-4D6F-AD64-254F81231A9A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

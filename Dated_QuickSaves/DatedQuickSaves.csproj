@@ -7,8 +7,8 @@
     <ProjectGuid>{A8211030-BF7F-42BF-A7C2-8C4D31A8E696}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Dated_QuickSaves</RootNamespace>
-    <AssemblyName>Dated_QuickSaves</AssemblyName>
+    <RootNamespace>DatedQuickSaves</RootNamespace>
+    <AssemblyName>DatedQuickSaves</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
