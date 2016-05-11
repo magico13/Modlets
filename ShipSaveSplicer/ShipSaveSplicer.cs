@@ -14,11 +14,18 @@ namespace ShipSaveSplicer
     public class ShipSaveSplicer : MonoBehaviour
     {
         public static ApplicationLauncherButton theButton;
-        public static bool includeCrew = false; //currently not working when true
+        public static bool includeCrew = false;
+        private static bool EventAdded = false;
         public void Start()
         {
             //add button to the Stock toolbar
-            AddButton();
+            if (!EventAdded)
+            {
+                GameEvents.onGUIApplicationLauncherReady.Add(AddButton);
+                EventAdded = true;
+            }
+
+            //AddButton();
         }
 
         public void OnDestroy()
@@ -49,6 +56,13 @@ namespace ShipSaveSplicer
                 includeCrew = true;
             else
                 includeCrew = false;
+
+            if (Input.GetKey(KeyCode.LeftShift))
+            {
+                OpenConvertWindow(); //convert ships to craft files
+                theButton.SetFalse();
+                return;
+            }
 
             //get the selected craft
             Vessel selectedVessel = null;
@@ -99,6 +113,135 @@ namespace ShipSaveSplicer
 
             ScreenMessage message = new ScreenMessage(vessel.vesselName+" exported to "+filename, 6, ScreenMessageStyle.UPPER_CENTER);
             ScreenMessages.PostScreenMessage(message);
+        }
+
+        public void OpenConvertWindow()
+        {
+            //convert the selected vessel to a craft file and save it in the ships folder for the save
+            string dir = KSPUtil.ApplicationRootPath + "/Ships/export/";
+            //provide a list of all the craft we can import
+            string[] files = System.IO.Directory.GetFiles(dir);
+            int count = files.Length;
+
+            DialogGUIBase[] options = new DialogGUIBase[count + 1];
+            for (int i = 0; i < count; i++)
+            {
+                int select = i;
+                options[i] = new DialogGUIButton(files[i].Split('/').Last(), () => { ConvertVessel(files[select]); });
+            }
+            options[count] = new DialogGUIButton("Close", Dummy);
+            string msg = "Select a vessel to convert to a .craft file.";
+
+            MultiOptionDialog a = new MultiOptionDialog(msg, "Convert Vessel to .craft", null, options);
+            PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), a, false, HighLogic.UISkin);
+        }
+
+        public void ConvertVessel(string name)
+        {
+            if (System.IO.File.Exists(name))
+            {
+                ConfigNode storedNode = ConfigNode.Load(name);
+
+                ConfigNode vesselNode = storedNode.GetNode("VESSEL");
+
+                List<string> invalidParts = InvalidParts(vesselNode);
+                if (invalidParts.Count > 0) //contains invalid parts and can't be loaded
+                {
+                    string msg = "The selected vessel cannot be converted because it contains the following invalid parts (perhaps you removed a mod?):\n";
+                    foreach (string invalid in invalidParts)
+                        msg += "    " + invalid + "\n";
+                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "Missing Parts", msg, "Ok", false, HighLogic.UISkin);
+                    return;
+                }
+                //clear out all crew on vessel
+                foreach (ConfigNode partNode in vesselNode.GetNodes("PART"))
+                {
+                    if (partNode.HasValue("crew"))
+                    {
+                        partNode.RemoveValues("crew");
+                    }
+                }
+
+                VesselToCraftFile(vesselNode);
+                
+            }
+        }
+
+        public void VesselToCraftFile(ConfigNode VesselNode)
+        {
+            //This code is taken from InflightShipSave by Claw, using the CC-BY-NC-SA license.
+            //This code thus is licensed under the same license, despite the GPLv3 license covering original KCT code
+            //See https://github.com/ClawKSP/InflightShipSave
+
+            ProtoVessel VesselToSave = HighLogic.CurrentGame.AddVessel(VesselNode);
+            if (VesselToSave.vesselRef == null)
+            {
+                Debug.LogError("Vessel reference is null!");
+                return;
+            }
+
+            try
+            {
+                string ShipName = VesselToSave.vesselName;
+                // Debug.LogWarning("Saving: " + ShipName);
+
+                //Vessel FromFlight = FlightGlobals.Vessels.Find(v => v.id == VesselToSave.vesselID);
+                try
+                {
+                    VesselToSave.vesselRef.Load();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                    Debug.Log("Attempting to continue.");
+                }
+
+                ShipConstruct ConstructToSave = new ShipConstruct(ShipName, "", VesselToSave.vesselRef.Parts[0]);
+                Quaternion OriginalRotation = VesselToSave.vesselRef.vesselTransform.rotation;
+                Vector3 OriginalPosition = VesselToSave.vesselRef.vesselTransform.position;
+
+                VesselToSave.vesselRef.SetRotation(new Quaternion(0, 0, 0, 1));
+                Vector3 ShipSize = ShipConstruction.CalculateCraftSize(ConstructToSave);
+                VesselToSave.vesselRef.SetPosition(new Vector3(0, ShipSize.y + 2, 0));
+
+
+                ConfigNode CN = new ConfigNode("ShipConstruct");
+                CN = ConstructToSave.SaveShip();
+                //SanitizeShipNode(CN);
+                CleanEditorNodes(CN);
+
+                //VesselToSave.rotation = OriginalRotation;
+                //VesselToSave.position = OriginalPosition;
+
+                if (ConstructToSave.shipFacility == EditorFacility.SPH)
+                {
+                    CN.Save(UrlDir.ApplicationRootPath + "saves/" + HighLogic.SaveFolder
+                        + "/Ships/SPH/" + ShipName + "_Rescued.craft");
+
+                    ScreenMessage message = new ScreenMessage(ShipName + " converted to " + UrlDir.ApplicationRootPath + "saves/" + HighLogic.SaveFolder
+                        + "/Ships/SPH/" + ShipName + "_Rescued.craft", 6, ScreenMessageStyle.UPPER_CENTER);
+                    ScreenMessages.PostScreenMessage(message);
+                }
+                else
+                {
+                    CN.Save(UrlDir.ApplicationRootPath + "saves/" + HighLogic.SaveFolder
+                        + "/Ships/VAB/" + ShipName + "_Rescued.craft");
+
+                    ScreenMessage message = new ScreenMessage(ShipName + " converted to " + UrlDir.ApplicationRootPath + "saves/" + HighLogic.SaveFolder
+                        + "/Ships/VAB/" + ShipName + "_Rescued.craft", 6, ScreenMessageStyle.UPPER_CENTER);
+                    ScreenMessages.PostScreenMessage(message);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+            finally
+            {
+                HighLogic.CurrentGame.DestroyVessel(VesselToSave.vesselRef);
+                VesselToSave.vesselRef.Die();
+            }
+            //End of Claw's code. Thanks Claw!
         }
 
         public void OpenImportWindow()
@@ -271,6 +414,91 @@ namespace ShipSaveSplicer
                 name = part.GetValue("name");
             return name;
         }
+
+        /* The following is directly from Claw's InflightShipSave and credit goes to the original author */
+        private void CleanEditorNodes(ConfigNode CN)
+        {
+
+            CN.SetValue("EngineIgnited", "False");
+            CN.SetValue("currentThrottle", "0");
+            CN.SetValue("Staged", "False");
+            CN.SetValue("sensorActive", "False");
+            CN.SetValue("throttle", "0");
+            CN.SetValue("generatorIsActive", "False");
+            CN.SetValue("persistentState", "STOWED");
+
+            string ModuleName = CN.GetValue("name");
+
+            // Turn off or remove specific things
+            if ("ModuleScienceExperiment" == ModuleName)
+            {
+                CN.RemoveNodes("ScienceData");
+            }
+            else if ("ModuleScienceExperiment" == ModuleName)
+            {
+                CN.SetValue("Inoperable", "False");
+                CN.RemoveNodes("ScienceData");
+            }
+            else if ("Log" == ModuleName)
+            {
+                CN.ClearValues();
+            }
+
+
+            for (int IndexNodes = 0; IndexNodes < CN.nodes.Count; IndexNodes++)
+            {
+                CleanEditorNodes(CN.nodes[IndexNodes]);
+            }
+        }
+
+        private void PristineNodes(ConfigNode CN)
+        {
+            if (null == CN) { return; }
+
+            if ("PART" == CN.name)
+            {
+                string PartName = ((CN.GetValue("part")).Split('_'))[0];
+
+                Debug.LogWarning("PART: " + PartName);
+
+                Part NewPart = PartLoader.getPartInfoByName(PartName).partPrefab;
+                ConfigNode NewPartCN = new ConfigNode();
+                Debug.LogWarning("New Part: " + NewPart.name);
+
+                NewPart.InitializeModules();
+
+                CN.ClearNodes();
+
+                // EVENTS, ACTIONS, PARTDATA, MODULE, RESOURCE
+
+                
+                NewPart.Events.OnSave(CN.AddNode("EVENTS"));
+                
+                NewPart.Actions.OnSave(CN.AddNode("ACTIONS"));
+                
+                NewPart.OnSave(CN.AddNode("PARTDATA"));
+                
+                for (int IndexModules = 0; IndexModules < NewPart.Modules.Count; IndexModules++)
+                {
+                    NewPart.Modules[IndexModules].Save(CN.AddNode("MODULE"));
+                }
+                
+                for (int IndexResources = 0; IndexResources < NewPart.Resources.Count; IndexResources++)
+                {
+                    NewPart.Resources[IndexResources].Save(CN.AddNode("RESOURCE"));
+                }
+
+                //CN.AddNode(CompiledNodes);
+
+                return;
+            }
+            for (int IndexNodes = 0; IndexNodes < CN.nodes.Count; IndexNodes++)
+            {
+                PristineNodes(CN.nodes[IndexNodes]);
+            }
+        }
+
+
     }
 }
 /*
