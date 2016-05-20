@@ -39,7 +39,7 @@ namespace EditorTime
             if (!drawing)
             {
                 //Draw the current time window
-                RenderingManager.AddToPostDrawQueue(0, DrawTimeWindow);
+                //RenderingManager.AddToPostDrawQueue(0, DrawTimeWindow);
                 drawing = true;
             }
         }
@@ -76,6 +76,11 @@ namespace EditorTime
             config.AddValue("WindowX", timeWindow.x);
             config.AddValue("WindowY", timeWindow.y);
             config.Save(configFilePath);
+        }
+
+        public void OnGUI()
+        {
+            DrawTimeWindow();
         }
 
         public void DrawTimeWindow()
