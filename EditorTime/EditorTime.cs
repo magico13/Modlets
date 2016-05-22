@@ -10,7 +10,7 @@ namespace EditorTime
     [KSPAddon(KSPAddon.Startup.EditorAny, false)]
     public class EditorTime : MonoBehaviour
     {
-        string configFilePath = KSPUtil.ApplicationRootPath + "/GameData/EditorTime/config.txt";
+        string configFilePath = KSPUtil.ApplicationRootPath + "/GameData/EditorTime/PluginData/config.txt";
         float timeRatio = 1.0F;
         DateTime lastUpdate = DateTime.MaxValue;
         bool drawing = false;
@@ -67,7 +67,7 @@ namespace EditorTime
         public void OnDestroy()
         {
             lastUpdate = DateTime.MaxValue;
-            RenderingManager.RemoveFromPostDrawQueue(0, DrawTimeWindow);
+            //RenderingManager.RemoveFromPostDrawQueue(0, DrawTimeWindow);
             drawing = false;
 
             //Save the settings
