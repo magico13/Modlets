@@ -135,9 +135,12 @@ namespace SensibleScreenshot
         public string spaceFiller = "_";
         public bool keepOrginalPNG = false;
 
-        private string filename = KSPUtil.ApplicationRootPath + "/GameData/SensibleScreenshot/settings.cfg";
+        private string directory = KSPUtil.ApplicationRootPath + "/GameData/SensibleScreenshot/PluginData/";
+        private string filename = "settings.cfg";
         public void Save()
         {
+            if (!System.IO.Directory.Exists(directory))
+                System.IO.Directory.CreateDirectory(directory);
             ConfigNode cfg = new ConfigNode();
             cfg.AddValue("DateString", dateFormat);
             cfg.AddValue("FileNameTemplate", fileTemplate);
@@ -147,14 +150,14 @@ namespace SensibleScreenshot
             cfg.AddValue("FillSpaces", fillSpaces);
             cfg.AddValue("ReplaceChar", spaceFiller);
 
-            cfg.Save(filename);
+            cfg.Save(directory + filename);
         }
 
         public void Load()
         {
-            if (System.IO.File.Exists(filename))
+            if (System.IO.File.Exists(directory + filename))
             {
-                ConfigNode cfg = ConfigNode.Load(filename);
+                ConfigNode cfg = ConfigNode.Load(directory + filename);
                 dateFormat = cfg.GetValue("DateString");
                 fileTemplate = cfg.GetValue("FileNameTemplate");
                 bool.TryParse(cfg.GetValue("ConvertToJPG"), out convertToJPG);

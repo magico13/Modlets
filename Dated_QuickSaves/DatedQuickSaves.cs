@@ -184,9 +184,12 @@ namespace DatedQuickSaves
         public int maxQSFiles = 20, maxASFiles = 20;
         public int autoSaveFreq = 15;
 
-        private string filename = KSPUtil.ApplicationRootPath + "/GameData/DatedQuickSaves/settings.cfg";
+        private string directory = KSPUtil.ApplicationRootPath + "/GameData/DatedQuickSaves/PluginData/";
+        private string filename = "settings.cfg";
         public void Save()
         {
+            if (!System.IO.Directory.Exists(directory))
+                System.IO.Directory.CreateDirectory(directory);
             ConfigNode cfg = new ConfigNode();
             cfg.AddValue("DateString", dateFormat);
             cfg.AddValue("FileNameTemplate", fileTemplate);
@@ -199,14 +202,14 @@ namespace DatedQuickSaves
             cfg.AddValue("FillSpaces", fillSpaces);
             cfg.AddValue("ReplaceChar", spaceFiller);
 
-            cfg.Save(filename);
+            cfg.Save(directory + filename);
         }
 
         public void Load()
         {
-            if (System.IO.File.Exists(filename))
+            if (System.IO.File.Exists(directory + filename))
             {
-                ConfigNode cfg = ConfigNode.Load(filename);
+                ConfigNode cfg = ConfigNode.Load(directory + filename);
                 dateFormat = cfg.GetValue("DateString");
                 fileTemplate = cfg.GetValue("FileNameTemplate");
                 int.TryParse(cfg.GetValue("MaxQuickSaveCount"), out maxQSFiles);
