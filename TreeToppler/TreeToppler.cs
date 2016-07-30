@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using UnityEngine;
-using KSP;
+﻿using UnityEngine;
 using KSP.UI.Screens;
+using System.Collections.Generic;
+using System;
 
 namespace TreeToppler
 {
@@ -34,14 +31,28 @@ namespace TreeToppler
                 if (GUI.Button(new Rect(2, Screen.height-40, 80, 20), "Topple"))
                 {
                     OverrideCost = false;
-                    DialogGUIBase[] options = new DialogGUIBase[5];
-                    options[0] = new DialogGUIButton("Unlock All Nodes", UnlockAllNoLvl);
-                    options[1] = new DialogGUIButton("Unlock Up To Level", UnlockAllLvl);
-                    options[2] = new DialogGUIButton("Disable Costs", DisableCosts);
-                    options[3] = new DialogGUIButton("Lock All Nodes", LockAll);
-                    options[4] = new DialogGUIButton("Cancel", DummyVoid);
-                    MultiOptionDialog diag = new MultiOptionDialog("What would you like to do?", "Tree Toppler", null, options);
+                    List<DialogGUIBase> options = new List<DialogGUIBase>();
+                    options.Add(new DialogGUIButton("Unlock All Nodes", UnlockAllNoLvl));
+                    options.Add(new DialogGUIButton("Unlock Up To Level", UnlockAllLvl));
+                    options.Add(new DialogGUIButton("Disable Costs", DisableCosts));
+                    options.Add(new DialogGUIButton("Lock All Nodes", LockAll));
+                    options.Add(new DialogGUIButton("Cancel", DummyVoid));
+                    MultiOptionDialog diag = new MultiOptionDialog("What would you like to do?", "Tree Toppler", null, options.ToArray());
                     PopupDialog.SpawnPopupDialog(diag, false, HighLogic.UISkin);
+                }
+
+                if (OverrideCost && RDController.Instance.node_selected != null)
+                {
+                    if (GUI.Button(new Rect(Screen.width - 225, 60, 100, 40), "Force Unlock"))
+                    {
+                        ForceUnlockTech(RDController.Instance.node_selected.tech.techID);
+                        RDController.Instance.UpdatePanel();
+                    }
+                    if (GUI.Button(new Rect(Screen.width - 120, 60, 100, 40), "Force Lock"))
+                    {
+                        ForceLockTech(RDController.Instance.node_selected.tech.techID);
+                        RDController.Instance.UpdatePanel();
+                    }
                 }
             }
         }
@@ -78,7 +89,8 @@ namespace TreeToppler
             foreach (RDNode node in RDController.Instance.nodes)
             {
                 if (!respectLvl || node.tech.scienceCost < level)
-                    node.tech.UnlockTech(true);
+                    ForceUnlockTech(node.tech.techID);
+                    //node.tech.UnlockTech(true);
             }
         }
 
@@ -86,13 +98,7 @@ namespace TreeToppler
         {
             foreach (RDNode node in RDController.Instance.nodes)
             {
-                if (node.tech.scienceCost > 0)
-                {
-                    ProtoTechNode protoNode = ResearchAndDevelopment.Instance.GetTechState(node.tech.techID);
-                    protoNode.state = RDTech.State.Unavailable;
-                    protoNode.partsPurchased.Clear();
-                    ResearchAndDevelopment.Instance.SetTechState(node.tech.techID, protoNode);
-                }
+                ForceLockTech(node.tech.techID);
             }
         }
 
@@ -106,7 +112,8 @@ namespace TreeToppler
             if (OverrideCost && ev.target != RDTech.OperationResult.Successful)
             {
                 lastNode = ev.host.techID; //prevent giving free science
-                ev.host.UnlockTech(true);
+                //ev.host.UnlockTech(true);
+                ForceUnlockTech(lastNode);
             }
             else if (OverrideCost && ev.target == RDTech.OperationResult.Successful && ev.host.techID != lastNode)
             {
@@ -115,10 +122,40 @@ namespace TreeToppler
                 ResearchAndDevelopment.Instance.AddScience(ev.host.scienceCost, TransactionReasons.RnDTechResearch);
             }
         }
+
+        private void ForceUnlockTech(string techID)
+        {
+            Debug.Log("[Toppler] Force unlocking " + techID);
+            RDNode node = RDController.Instance.nodes.Find(n => n.tech.techID == techID);
+            lastNode = techID;
+            if (node != null)
+                node.tech.UnlockTech(true);
+            
+        }
+
+        private void ForceLockTech(string techID)
+        {
+            Debug.Log("[Toppler] Force locking " + techID);
+            try
+            {
+                ProtoTechNode protoNode = ResearchAndDevelopment.Instance.GetTechState(techID);
+                if (protoNode != null && protoNode.scienceCost > 0) //can't force close the initial tech
+                {
+                    protoNode.state = RDTech.State.Unavailable;
+                    protoNode.partsPurchased.Clear();
+                    ResearchAndDevelopment.Instance.SetTechState(techID, protoNode);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.Log("Error while force locking node.");
+                Debug.LogException(e);
+            }
+        }
     }
 }
 /*
-Copyright (C) 2015  Michael Marvin
+Copyright (C) 2016  Michael Marvin
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

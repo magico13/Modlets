@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using KSP;
 using UnityEngine;
-using MagiCore;
 
 namespace DatedQuickSaves
 {
