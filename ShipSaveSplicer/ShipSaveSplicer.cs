@@ -327,7 +327,7 @@ namespace ShipSaveSplicer
                                     {
                                         //alright, rename this kerbal to a new name
                                         string newName = RenameKerbal(crewmember);
-                                        newCrew.name = newName;
+                                        newCrew.ChangeName(newName);
                                         crewValue.value = newName;
                                     }
                                     //add the crew member to the crew roster
