@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using System.Reflection;
 using KSP.UI.Screens;
-
+using System.Text;
 
 namespace ShipSaveSplicer
 {
@@ -50,10 +50,8 @@ namespace ShipSaveSplicer
         public void OnClick()
         {
             //figure out if mod+clicked
-            if (GameSettings.MODIFIER_KEY.GetKey())
-                includeCrew = true;
-            else
-                includeCrew = false;
+            includeCrew = GameSettings.MODIFIER_KEY.GetKey();
+            bool ctrlHeld = Input.GetKey(KeyCode.LeftControl);
 
             if (Input.GetKey(KeyCode.LeftShift))
             {
@@ -78,10 +76,14 @@ namespace ShipSaveSplicer
                 }
             }
 
-            if (selectedVessel != null)
-                ExportSelectedCraft(selectedVessel);
-            else
+            if (ctrlHeld || includeCrew) //ctrl or modifier held
+            {
                 OpenImportWindow();
+            }
+            else if (selectedVessel != null) 
+            {
+                ExportSelectedCraft(selectedVessel);
+            }
 
             theButton.SetFalse(false);
         }
@@ -145,10 +147,10 @@ namespace ShipSaveSplicer
                 List<string> invalidParts = InvalidParts(vesselNode);
                 if (invalidParts.Count > 0) //contains invalid parts and can't be loaded
                 {
-                    string msg = "The selected vessel cannot be converted because it contains the following invalid parts (perhaps you removed a mod?):\n";
+                    StringBuilder msg = new StringBuilder("The selected vessel cannot be converted because it contains the following invalid parts (perhaps you removed a mod?):\n");
                     foreach (string invalid in invalidParts)
-                        msg += "    " + invalid + "\n";
-                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "Missing Parts", msg, "Ok", false, HighLogic.UISkin);
+                        msg.Append("    ").AppendLine(invalid);
+                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "Missing Parts", msg.ToString(), "Ok", false, HighLogic.UISkin);
                     return;
                 }
                 //clear out all crew on vessel
@@ -270,6 +272,8 @@ namespace ShipSaveSplicer
 
                 ConfigNode vesselNode = storedNode.GetNode("VESSEL");
 
+                vesselNode.SetValue("pid", Guid.NewGuid().ToString());
+
                 List<string> invalidParts = InvalidParts(vesselNode);
                 if (invalidParts.Count > 0) //contains invalid parts and can't be loaded
                 {
@@ -285,44 +289,34 @@ namespace ShipSaveSplicer
                 if (!includeCrew)
                 {
                     //clear out all crew on vessel
-                    foreach (ConfigNode partNode in vesselNode.GetNodes("PART"))
-                    {
-                        if (partNode.HasValue("crew"))
-                        {
-                            partNode.RemoveValues("crew");
-                        }
-                    }
+                    StripCrew(vesselNode);
                 }
                 else
                 {
                     //create crewmembers if they don't exist, set all of them to assigned
-                    foreach (ConfigNode partNode in vesselNode.GetNodes("PART"))
+                    try
                     {
-                        if (partNode.HasValue("crew"))
+                        foreach (ConfigNode partNode in vesselNode.GetNodes("PART"))
                         {
-                            List<string> toRemove = new List<string>();
-                            foreach (ConfigNode.Value crewValue in partNode.values)//(string crewmember in partNode.GetValues("crew"))
+                            if (partNode.HasValue("crew"))
                             {
-                                if (crewValue.name != "crew")
-                                    continue;
-                                string crewmember = crewValue.value;
-                                //find the confignode saved with the vessel
-                                ConfigNode crewNode = storedNode.GetNodes("CREW").FirstOrDefault(c => c.GetValue("name") == crewmember);
-                                if (crewNode == null || crewNode.GetValue("type") != "Crew") //if no data or is tourist then remove from ship
+                                List<string> toRemove = new List<string>();
+                                foreach (ConfigNode.Value crewValue in partNode.values)//(string crewmember in partNode.GetValues("crew"))
                                 {
-                                    //can't find the required data, so remove that kerbal from the ship
-                                    toRemove.Add(crewmember);
-                                    /*foreach (ConfigNode.Value val in partNode.values)
+                                    if (crewValue.name != "crew")
+                                        continue;
+                                    string crewmember = crewValue.value;
+                                    //find the confignode saved with the vessel
+                                    ConfigNode crewNode = storedNode.GetNodes("CREW")?.FirstOrDefault(c => c.GetValue("name") == crewmember);
+                                    if (crewNode == null || crewNode.GetValue("type") != "Crew") //if no data or is tourist then remove from ship
                                     {
-                                        if (val.name == "crew" && val.value == crewmember)
-                                            partNode.values.Remove(val);
-                                    }*/
-                                    continue;
-                                }
+                                        //can't find the required data, so remove that kerbal from the ship
+                                        toRemove.Add(crewmember);
+                                        continue;
+                                    }
 
-                                
+
                                     ProtoCrewMember newCrew = new ProtoCrewMember(HighLogic.CurrentGame.Mode, crewNode, ProtoCrewMember.KerbalType.Crew);
-
                                     if (HighLogic.CurrentGame.CrewRoster.Crew.FirstOrDefault(c => c.name == crewmember) != null) //there's already a kerbal with that name (sadness :( )
                                     {
                                         //alright, rename this kerbal to a new name
@@ -332,28 +326,54 @@ namespace ShipSaveSplicer
                                     }
                                     //add the crew member to the crew roster
                                     //the function to do this is hidden for some reason. yay!
-                                    MethodInfo addMethod = HighLogic.CurrentGame.CrewRoster.GetType().GetMethod("AddCrewMember", BindingFlags.NonPublic | BindingFlags.Instance);
-                                    addMethod.Invoke(HighLogic.CurrentGame.CrewRoster, new object[] { newCrew });
-                            }
-
-                            foreach (string crewmember in toRemove) //remove all crews that shouldn't be here anymore
-                            {
-                                //find the value with this kerbal and remove it
-                                foreach (ConfigNode.Value val in partNode.values)
+                                    HighLogic.CurrentGame.CrewRoster.AddCrewMember(newCrew); //no longer hidden! MORE YAY!
+                                }
+                                foreach (string crewmember in toRemove) //remove all crews that shouldn't be here anymore
                                 {
-                                    if (val.name == "crew" && val.value == crewmember)
+                                    //find the value with this kerbal and remove it
+                                    foreach (ConfigNode.Value val in partNode.values)
                                     {
-                                        partNode.values.Remove(val);
-                                        break;
+                                        if (val.name == "crew" && val.value == crewmember)
+                                        {
+                                            partNode.values.Remove(val);
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        Debug.Log("[ShipSaveSplicer] Encountered exception while transferring crew. The exception follows. Stripping crew data.");
+                        Debug.LogException(ex);
+
+                        StripCrew(vesselNode);
+
+                        PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "Error Occurred", 
+                            "Unable to import crew. An exception occurred and has been logged.",
+                            "Ok", false, HighLogic.UISkin);
+
+                        return;
+                    }
                 }
 
                 ProtoVessel addedVessel = HighLogic.CurrentGame.AddVessel(vesselNode);
                 //we might have to assign the kerbals to the vessel here
+
+            //related issue, in 1.2.2 (at least) we fail validation of assignments when there are two ships with the same part ids (guessing).
+            //All I know is that if I terminate the original flight, I can import crew. Otherwise it NREs when I save.
+            }
+        }
+
+        private void StripCrew(ConfigNode vesselNode)
+        {
+            foreach (ConfigNode partNode in vesselNode.GetNodes("PART"))
+            {
+                if (partNode.HasValue("crew"))
+                {
+                    partNode.RemoveValues("crew");
+                }
             }
         }
 
