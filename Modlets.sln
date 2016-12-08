@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShipSaveSplicer", "ShipSave
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EditorTime", "EditorTime\EditorTime.csproj", "{1E93E0F6-CC8E-46F5-A038-A75BBA9B4FA2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wwwwwwwww", "Wwwwwwwww\Wwwwwwwww.csproj", "{CDB9A24D-2BB5-4E8E-BD6B-60075E60F6B5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{1E93E0F6-CC8E-46F5-A038-A75BBA9B4FA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1E93E0F6-CC8E-46F5-A038-A75BBA9B4FA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1E93E0F6-CC8E-46F5-A038-A75BBA9B4FA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDB9A24D-2BB5-4E8E-BD6B-60075E60F6B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDB9A24D-2BB5-4E8E-BD6B-60075E60F6B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDB9A24D-2BB5-4E8E-BD6B-60075E60F6B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDB9A24D-2BB5-4E8E-BD6B-60075E60F6B5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
