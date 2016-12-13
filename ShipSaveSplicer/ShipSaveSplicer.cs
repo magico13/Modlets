@@ -50,7 +50,8 @@ namespace ShipSaveSplicer
         public void OnClick()
         {
             //figure out if mod+clicked
-            includeCrew = GameSettings.MODIFIER_KEY.GetKey();
+            //includeCrew = GameSettings.MODIFIER_KEY.GetKey(); //TODO: Reenable when fixed
+            includeCrew = false;
             bool ctrlHeld = Input.GetKey(KeyCode.LeftControl);
 
             if (Input.GetKey(KeyCode.LeftShift))
@@ -258,7 +259,8 @@ namespace ShipSaveSplicer
                 options[i] = new DialogGUIButton(files[i].Split('/').Last(), () => { ImportVessel(files[select]); });
             }
             options[count] = new DialogGUIButton("Close", Dummy);
-            string msg = "Select a vessel to import. Will "+(includeCrew ? "" : "not ")+"import crew members."+(includeCrew ? "": " (modifier+click the SSS button to include crew)");
+            string msg = "Select a vessel to import. Will " + (includeCrew ? "" : "not ") + "import crew members.";// +(includeCrew ? "": " (modifier+click the SSS button to include crew)");
+            //TODO: Reenable when fixed
 
             MultiOptionDialog a = new MultiOptionDialog(msg, "Import Vessel", null, options);
             PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), a, false, HighLogic.UISkin);
