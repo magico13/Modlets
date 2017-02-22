@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 
 namespace SimuLite
 {
@@ -18,54 +19,75 @@ namespace SimuLite
         }
 
 
-        private CelestialBody _selectedBody;
+        private CelestialBody _selectedBody = Planetarium.fetch.Home;
         /// <summary>
         /// The planet/moon that the simulation will take place around
         /// </summary>
         public CelestialBody SelectedBody
         {
-            get { return _selectedBody; }
+            get { return _selectedBody ?? Planetarium.fetch.Home; }
             set
             {
-                _selectedBody = value;
-                //If not simulating at 
-                if (value != null && value != Planetarium.fetch.Home)
+                if (_selectedBody != value)
                 {
-                    OrbitalSimulation = true;
-                }
-                else if (value == null)
-                {
-                    _selectedBody = Planetarium.fetch.Home;
+                    _selectedBody = value;
+                    //If not simulating at home
+                    //if (value != null && value != Planetarium.fetch.Home)
+                    //{
+                    //    OrbitalSimulation = true;
+                    //}
+                    //else 
+                    if (value == null)
+                    {
+                        _selectedBody = Planetarium.fetch.Home;
+                    }
                 }
             }
         }
 
         private double _duration;
-
+        /// <summary>
+        /// The expected length of the simulation
+        /// </summary>
         public double Duration
         {
             get { return _duration; }
             set
             {
-                if (value <= 0)
+                if (_duration != value)
                 {
-                    _duration = 1000.0 * 365 * 86400; //one thousand Earth years
+                    _duration = value;
+                    if (value <= 0)
+                    {
+                        _duration = 1000.0 * 365 * 86400; //one thousand Earth years
+                    }
                 }
-                _duration = value;
             }
         }
 
+        private double _complexity;
 
+        public double Complexity
+        {
+            get { return _complexity; }
+            set { _complexity = value; }
+        }
 
-        /// <summary>
-        /// Whether to show advanced options (time options and such)
-        /// </summary>
-        public bool ShowAdvanced { get; set; }
-
+        private double? _ut = null;
         /// <summary>
         /// The time to simulate at. Default is null. Null means now.
         /// </summary>
-        public double? UT { get; set; }
+        public double? UT
+        {
+            get { return _ut ?? Planetarium.GetUniversalTime(); }
+            set
+            {
+                if (_ut != value)
+                {
+                    _ut = value;
+                }
+            }
+        }
 
         /// <summary>
         /// Whether the given UT is relative to now (true) or absolute (false, default)
@@ -74,10 +96,22 @@ namespace SimuLite
 
         #region Orbital Parameters
 
+        private bool _orbitalSimulation = false;
         /// <summary>
         /// Whether the simulation is in orbit or on land
         /// </summary>
-        public bool OrbitalSimulation { get; set; }
+        public bool OrbitalSimulation
+        {
+            get { return _orbitalSimulation; }
+            set
+            {
+                if (_orbitalSimulation != value)
+                {
+                    _orbitalSimulation = value;
+                    //CalculateComplexity();
+                }
+            }
+        }
 
         private double _altitude = 0;
         /// <summary>
@@ -85,15 +119,19 @@ namespace SimuLite
         /// </summary>
         public double Altitude
         { 
-            get
+            get { return _altitude; }
+            set
             {
-                if (SelectedBody.atmosphere && _altitude < (SelectedBody.atmosphereDepth + 1000))
+                if (_altitude != value)
                 {
-                    return SelectedBody.atmosphereDepth + 1000;
+                    _altitude = value;
+                    if (SelectedBody.atmosphere && _altitude < (SelectedBody.atmosphereDepth + 1000))
+                    {
+                        _altitude = SelectedBody.atmosphereDepth + 1000;
+                    }
+                    //CalculateComplexity(); //shouldn't affect it
                 }
-                return _altitude;
             }
-            set { _altitude = value; }
         }
 
         private double _inclination;
@@ -105,13 +143,16 @@ namespace SimuLite
             get { return _inclination; }
             set
             {
-                _inclination = value % 360;
+                if (_inclination != value)
+                {
+                    _inclination = value % 360;
+                    //CalculateComplexity(); //shouldn't affect it
+                }
             }
         }
 
 
         #endregion Orbital Parameters
-
 
 
         #region Public Methods
@@ -136,10 +177,10 @@ namespace SimuLite
             return Duration;
         }
         /// <summary>
-        /// Calculates the cost of the simulation
+        /// Calculates the cost of the simulation and caches it in Complexity
         /// </summary>
         /// <returns>The simulation cost</returns>
-        public double CalculateCost()
+        public double CalculateComplexity()
         {
             CelestialBody Kerbin = Planetarium.fetch.Home;
             Dictionary<string, string> vars = new Dictionary<string, string>();
@@ -152,6 +193,7 @@ namespace SimuLite
             float out1, out2;
             vars.Add("m", Ship.GetTotalMass().ToString()); //Vessel loaded mass
             vars.Add("C", Ship.GetShipCosts(out out1, out out2).ToString()); //Vessel loaded cost
+            vars.Add("dT", (UT - Planetarium.GetUniversalTime()).ToString()); //How far ahead in time the simulation is from right now (or negative for in the past)
 
             //vars.Add("s", SimCount.ToString()); //Number of times simulated this editor session //temporarily disabled
 
@@ -175,14 +217,11 @@ namespace SimuLite
             vars.Add("SMA", orbitRatio.ToString());
             vars.Add("PM", Parent.Mass.ToString());
 
-            if ((SelectedBody == Kerbin) && !OrbitalSimulation)
-            {
-                return MagiCore.MathParsing.ParseMath(Configuration.RegularSimCost, vars);
-            }
-            else
-            {
-                return MagiCore.MathParsing.ParseMath(Configuration.OrbitalSimCost, vars);
-            }
+            vars.Add("O", (OrbitalSimulation ? 1 : 0).ToString()); //is an orbital simulation
+
+
+            Complexity = MagiCore.MathParsing.ParseMath(Configuration.SimComplexity, vars);
+            return Complexity;
         }
 
         /// <summary>
@@ -190,17 +229,82 @@ namespace SimuLite
         /// </summary>
         public void StartSimulation()
         {
+            makeBackupFile();
+
+            string tempFile = KSPUtil.ApplicationRootPath + "saves/" + HighLogic.SaveFolder + "/Ships/temp.craft";
+            VesselCrewManifest manifest = KSP.UI.CrewAssignmentDialog.Instance.GetManifest();
+            if (manifest == null)
+            {
+                manifest = HighLogic.CurrentGame.CrewRoster.DefaultCrewForVessel(EditorLogic.fetch.ship.SaveShip(), null, true);
+            }
+            EditorLogic.fetch.ship.SaveShip().Save(tempFile);
+
             if (!OrbitalSimulation)
             {
                 //start new launch on launchpad/runway
-
+                startRegularLaunch(tempFile, manifest);
             }
             else
             {
                 //start new launch in spaaaaacccceee
+                VesselSpawner.VesselData vessel = makeVessel(tempFile, manifest);
+                if (VesselSpawner.CreateVessel(vessel))
+                {
+                    Debug.Log("[SimuLite] Vessel added to world.");
+                    //FlightDriver.StartAndFocusVessel(HighLogic.CurrentGame, FlightGlobals.Vessels.FindIndex(v => v.id == vessel.id)); //well, let's try that. They want an index it seems
+                    
+                    //FlightGlobals.ForceSetActiveVessel(FlightGlobals.FindVessel(vessel.id.Value));
+                }
+                else
+                {
+                    Debug.Log("[SimuLite] Failed to create vessel.");
+                }
+                //vessel exists, now switch to it
             }
         }
-
         #endregion Public Methods
+
+        private void makeBackupFile()
+        {
+            GamePersistence.SaveGame("SimuLite_backup", HighLogic.SaveFolder, SaveMode.OVERWRITE);
+        }
+
+        private void startRegularLaunch(string craftFile, VesselCrewManifest manifest)
+        {
+            FlightDriver.StartWithNewLaunch(craftFile, EditorLogic.FlagURL, EditorLogic.fetch.launchSiteName, manifest);
+        }
+
+        private VesselSpawner.VesselData makeVessel(string craftFile, VesselCrewManifest manifest)
+        {
+            VesselSpawner.VesselData data = new VesselSpawner.VesselData();
+            data.orbit = new Orbit(Inclination, 0, (Altitude + SelectedBody.Radius), 0, 0, 0, UT.Value, SelectedBody);
+            data.orbit.Init();
+            data.orbit.UpdateFromUT(UT.Value);
+
+            data.body = SelectedBody;
+            data.altitude = Altitude;
+            data.craftURL = craftFile;
+            //data.crew = manifest.GetAllCrew();
+            data.flagURL = EditorLogic.FlagURL;
+            data.orbiting = true;
+            data.owned = true;
+            data.vesselType = VesselType.Ship;
+
+            
+
+
+            foreach (ProtoCrewMember pcm in manifest.GetAllCrew(false))
+            {
+                VesselSpawner.CrewData crewData = new VesselSpawner.CrewData();
+                crewData.name = pcm.name;
+                if (data.crew == null)
+                {
+                    data.crew = new List<VesselSpawner.CrewData>();
+                }
+                data.crew.Add(crewData);
+            }
+
+            return data;
+        }
     }
 }

@@ -7,7 +7,7 @@ namespace SimuLite
 {
     public class Configuration
     {
-        public static string RegularSimCost = "";
-        public static string OrbitalSimCost = "";
+        public static string SimComplexity = "10";
+        public static string CoreHourCost = "100";
     }
 }
