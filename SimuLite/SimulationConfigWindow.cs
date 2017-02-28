@@ -119,6 +119,12 @@ namespace SimuLite
             }
 
             GUILayout.EndVertical();
+
+            //update the ship
+            if (EditorLogic.fetch?.ship != null)
+            {
+                config.Ship = EditorLogic.fetch.ship;
+            }
         }
     }
 }

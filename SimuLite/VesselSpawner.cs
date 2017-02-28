@@ -31,7 +31,7 @@ namespace SimuLite
         {
             public string name = null;
             public Guid? id = null;
-            public string craftURL = null;
+            public ShipConstruct shipConstruct = null;
             public AvailablePart craftPart = null;
             public string flagURL = null;
             public VesselType vesselType = VesselType.Ship;
@@ -55,7 +55,7 @@ namespace SimuLite
             {
                 name = vd.name;
                 id = vd.id;
-                craftURL = vd.craftURL;
+                shipConstruct = vd.shipConstruct;
                 craftPart = vd.craftPart;
                 flagURL = vd.flagURL;
                 vesselType = vd.vesselType;
@@ -102,7 +102,7 @@ namespace SimuLite
             return node;
         }
 
-        public static bool CreateVessel(VesselData vesselData)
+        public static Guid? CreateVessel(VesselData vesselData)
         {
             Debug.Log("1");
             String gameDataDir = KSPUtil.ApplicationRootPath;
@@ -139,22 +139,24 @@ namespace SimuLite
             }
             Debug.Log("4");
             ConfigNode[] partNodes;
-            UntrackedObjectClass sizeClass;
+            //UntrackedObjectClass sizeClass;
             ShipConstruct shipConstruct = null;
-            if (!string.IsNullOrEmpty(vesselData.craftURL))
+            if (vesselData.shipConstruct != null)
             {
                 Debug.Log("5");
                 // Save the current ShipConstruction ship, otherwise the player will see the spawned ship next time they enter the VAB!
-                ConfigNode currentShip = ShipConstruction.ShipConfig;
+                //ConfigNode currentShip = ShipConstruction.ShipConfig;
 
-                shipConstruct = ShipConstruction.LoadShip(vesselData.craftURL);
-                if (shipConstruct == null)
-                {
-                    return false;
-                }
+                //shipConstruct = ShipConstruction.LoadShip(vesselData.craftURL);
+                //if (shipConstruct == null)
+                //{
+                //    return false;
+                //}
 
                 // Restore ShipConstruction ship
-                ShipConstruction.ShipConfig = currentShip;
+                //ShipConstruction.ShipConfig = currentShip;
+
+                shipConstruct = vesselData.shipConstruct;
                 Debug.Log("6");
                 // Set the name
                 if (string.IsNullOrEmpty(vesselData.name))
@@ -181,26 +183,26 @@ namespace SimuLite
                 // Estimate an object class, numbers are based on the in game description of the
                 // size classes.
                 float size = shipConstruct.shipSize.magnitude / 2.0f;
-                if (size < 4.0f)
-                {
-                    sizeClass = UntrackedObjectClass.A;
-                }
-                else if (size < 7.0f)
-                {
-                    sizeClass = UntrackedObjectClass.B;
-                }
-                else if (size < 12.0f)
-                {
-                    sizeClass = UntrackedObjectClass.C;
-                }
-                else if (size < 18.0f)
-                {
-                    sizeClass = UntrackedObjectClass.D;
-                }
-                else
-                {
-                    sizeClass = UntrackedObjectClass.E;
-                }
+                //if (size < 4.0f)
+                //{
+                //    sizeClass = UntrackedObjectClass.A;
+                //}
+                //else if (size < 7.0f)
+                //{
+                //    sizeClass = UntrackedObjectClass.B;
+                //}
+                //else if (size < 12.0f)
+                //{
+                //    sizeClass = UntrackedObjectClass.C;
+                //}
+                //else if (size < 18.0f)
+                //{
+                //    sizeClass = UntrackedObjectClass.D;
+                //}
+                //else
+                //{
+                //    sizeClass = UntrackedObjectClass.E;
+                //}
                 Debug.Log("8");
                 foreach (CrewData cd in vesselData.crew)
                 {
@@ -273,7 +275,7 @@ namespace SimuLite
                 partNodes[0] = ProtoVessel.CreatePartNode(vesselData.craftPart.name, flightId, crewArray);
 
                 // Default the size class
-                sizeClass = UntrackedObjectClass.A;
+                //sizeClass = UntrackedObjectClass.A;
 
                 // Set the name
                 if (string.IsNullOrEmpty(vesselData.name))
@@ -388,14 +390,14 @@ namespace SimuLite
             // Add vessel to the game
             ProtoVessel protoVessel = new ProtoVessel(protoVesselNode, HighLogic.CurrentGame);
             protoVessel.Load(HighLogic.CurrentGame.flightState);
-
+            HighLogic.CurrentGame.flightState.protoVessels.Add(protoVessel);
             // Store the id for later use
             vesselData.id = protoVessel.vesselRef.id;
             Debug.Log("14");
             // Associate it so that it can be used in contract parameters
             //ContractVesselTracker.Instance.AssociateVessel(vesselData.name, protoVessel.vesselRef);
 
-            return true;
+            return vesselData.id;
         }
     }
 }

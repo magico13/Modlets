@@ -94,6 +94,28 @@ namespace SimuLite
         /// </summary>
         public bool IsDeltaUT { get; set; }
 
+        private VesselCrewManifest _crew;
+        /// <summary>
+        /// The crew to use on the vessel
+        /// </summary>
+        public VesselCrewManifest Crew
+        {
+            set { _crew = value; }
+            get
+            {
+                if (_crew != null)
+                {
+                    return _crew;
+                }
+                VesselCrewManifest manifest = KSP.UI.CrewAssignmentDialog.Instance.GetManifest();
+                if (manifest == null)
+                {
+                    manifest = HighLogic.CurrentGame.CrewRoster.DefaultCrewForVessel(EditorLogic.fetch.ship.SaveShip(), null, true);
+                }
+                return manifest;
+            }
+        }
+
         #region Orbital Parameters
 
         private bool _orbitalSimulation = false;
@@ -230,28 +252,20 @@ namespace SimuLite
         public void StartSimulation()
         {
             makeBackupFile();
-
-            string tempFile = KSPUtil.ApplicationRootPath + "saves/" + HighLogic.SaveFolder + "/Ships/temp.craft";
-            VesselCrewManifest manifest = KSP.UI.CrewAssignmentDialog.Instance.GetManifest();
-            if (manifest == null)
-            {
-                manifest = HighLogic.CurrentGame.CrewRoster.DefaultCrewForVessel(EditorLogic.fetch.ship.SaveShip(), null, true);
-            }
-            EditorLogic.fetch.ship.SaveShip().Save(tempFile);
-
             if (!OrbitalSimulation)
             {
                 //start new launch on launchpad/runway
-                startRegularLaunch(tempFile, manifest);
+                startRegularLaunch();
             }
             else
             {
                 //start new launch in spaaaaacccceee
-                VesselSpawner.VesselData vessel = makeVessel(tempFile, manifest);
-                if (VesselSpawner.CreateVessel(vessel))
+                VesselSpawner.VesselData vessel = makeVessel();
+                Guid? id = null;
+                if ((id = VesselSpawner.CreateVessel(vessel)) != null)
                 {
                     Debug.Log("[SimuLite] Vessel added to world.");
-                    //FlightDriver.StartAndFocusVessel(HighLogic.CurrentGame, FlightGlobals.Vessels.FindIndex(v => v.id == vessel.id)); //well, let's try that. They want an index it seems
+                    FlightDriver.StartAndFocusVessel(HighLogic.CurrentGame, FlightGlobals.Vessels.FindIndex(v => v.id == id)); //well, let's try that. They want an index it seems
                     
                     //FlightGlobals.ForceSetActiveVessel(FlightGlobals.FindVessel(vessel.id.Value));
                 }
@@ -264,37 +278,44 @@ namespace SimuLite
         }
         #endregion Public Methods
 
+        #region Private Methods
         private void makeBackupFile()
         {
             GamePersistence.SaveGame("SimuLite_backup", HighLogic.SaveFolder, SaveMode.OVERWRITE);
         }
 
-        private void startRegularLaunch(string craftFile, VesselCrewManifest manifest)
+        private void startRegularLaunch()
         {
-            FlightDriver.StartWithNewLaunch(craftFile, EditorLogic.FlagURL, EditorLogic.fetch.launchSiteName, manifest);
+            //save the ship to a temporary file
+            string craftFile = KSPUtil.ApplicationRootPath + "saves/" + HighLogic.SaveFolder + "/Ships/temp.craft";
+            Ship.SaveShip().Save(craftFile);
+
+            //start a new launch with that temp file
+            FlightDriver.StartWithNewLaunch(craftFile, EditorLogic.FlagURL, EditorLogic.fetch.launchSiteName, Crew);
         }
 
-        private VesselSpawner.VesselData makeVessel(string craftFile, VesselCrewManifest manifest)
+        private VesselSpawner.VesselData makeVessel()
         {
             VesselSpawner.VesselData data = new VesselSpawner.VesselData();
             data.orbit = new Orbit(Inclination, 0, (Altitude + SelectedBody.Radius), 0, 0, 0, UT.Value, SelectedBody);
-            data.orbit.Init();
-            data.orbit.UpdateFromUT(UT.Value);
+            //data.orbit.Init();
+            //data.orbit.UpdateFromUT(UT.Value);
 
             data.body = SelectedBody;
             data.altitude = Altitude;
-            data.craftURL = craftFile;
+            data.shipConstruct = Ship;
             //data.crew = manifest.GetAllCrew();
             data.flagURL = EditorLogic.FlagURL;
             data.orbiting = true;
             data.owned = true;
             data.vesselType = VesselType.Ship;
 
-            
-
-
-            foreach (ProtoCrewMember pcm in manifest.GetAllCrew(false))
+            foreach (ProtoCrewMember pcm in Crew?.GetAllCrew(false) ?? new List<ProtoCrewMember>())
             {
+                if (pcm == null)
+                {
+                    continue;
+                }
                 VesselSpawner.CrewData crewData = new VesselSpawner.CrewData();
                 crewData.name = pcm.name;
                 if (data.crew == null)
@@ -306,5 +327,6 @@ namespace SimuLite
 
             return data;
         }
+        #endregion Private Methods
     }
 }
