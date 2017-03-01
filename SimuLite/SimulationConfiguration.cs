@@ -80,7 +80,7 @@ namespace SimuLite
         public double? UT
         {
             get { return _ut ?? Planetarium.GetUniversalTime(); }
-            set
+            private set
             {
                 if (_ut != value)
                 {
@@ -92,7 +92,7 @@ namespace SimuLite
         /// <summary>
         /// Whether the given UT is relative to now (true) or absolute (false, default)
         /// </summary>
-        public bool IsDeltaUT { get; set; }
+        public bool IsDeltaUT { get; private set; }
 
         private VesselCrewManifest _crew;
         /// <summary>
@@ -186,7 +186,12 @@ namespace SimuLite
         public void SetTime(string UTString, bool relative=false)
         {
             IsDeltaUT = relative;
-            UT = MagiCore.Utilities.ParseTimeString(UTString);
+            double time = MagiCore.Utilities.ParseTimeString(UTString, toUT: !relative); //if relative, then we want a timespan, not a fixed (1 based) UT
+            if (relative)
+            {
+                time += Planetarium.GetUniversalTime();
+            }
+            UT = time;
         }
 
         /// <summary>
@@ -251,7 +256,11 @@ namespace SimuLite
         /// </summary>
         public void StartSimulation()
         {
-            makeBackupFile();
+            SimuLite.MakeBackupFile();
+
+            SimuLite.Instance.SetSimulationProperties(Complexity);
+
+            setGameUT();
             if (!OrbitalSimulation)
             {
                 //start new launch on launchpad/runway
@@ -265,23 +274,23 @@ namespace SimuLite
                 if ((id = VesselSpawner.CreateVessel(vessel)) != null)
                 {
                     Debug.Log("[SimuLite] Vessel added to world.");
-                    FlightDriver.StartAndFocusVessel(HighLogic.CurrentGame, FlightGlobals.Vessels.FindIndex(v => v.id == id)); //well, let's try that. They want an index it seems
-                    
-                    //FlightGlobals.ForceSetActiveVessel(FlightGlobals.FindVessel(vessel.id.Value));
+                    //vessel exists, now switch to it
+                    FlightDriver.StartAndFocusVessel(HighLogic.CurrentGame, FlightGlobals.Vessels.FindIndex(v => v.id == id));
                 }
                 else
                 {
                     Debug.Log("[SimuLite] Failed to create vessel.");
                 }
-                //vessel exists, now switch to it
             }
         }
         #endregion Public Methods
 
         #region Private Methods
-        private void makeBackupFile()
+        
+
+        private void setGameUT()
         {
-            GamePersistence.SaveGame("SimuLite_backup", HighLogic.SaveFolder, SaveMode.OVERWRITE);
+            HighLogic.CurrentGame.flightState.universalTime = UT.GetValueOrDefault();
         }
 
         private void startRegularLaunch()
