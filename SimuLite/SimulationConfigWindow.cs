@@ -6,8 +6,11 @@ using UnityEngine;
 
 namespace SimuLite
 {
-    public class SimulationConfigWindow
+    public class SimulationConfigWindow : WindowBase
     {
+
+        public SimulationConfigWindow() : base(8234, "Simulation Configuration") { }
+
         internal SimulationConfiguration config = new SimulationConfiguration();
 
         #region UI Properties
@@ -72,7 +75,7 @@ namespace SimuLite
         #endregion UI Properties
 
 
-        public void Draw(int windowID)
+        public override void Draw(int windowID)
         {
             //planet
             //orbit?
@@ -125,6 +128,9 @@ namespace SimuLite
             {
                 config.Ship = EditorLogic.fetch.ship;
             }
+
+
+            base.Draw(windowID);
         }
     }
 }

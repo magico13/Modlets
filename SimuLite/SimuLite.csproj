@@ -49,11 +49,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration.cs" />
+    <Compile Include="PauseWindow.cs" />
     <Compile Include="SimulationConfiguration.cs" />
     <Compile Include="SimulationConfigWindow.cs" />
     <Compile Include="SimuLite.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StaticInformation.cs" />
     <Compile Include="VesselSpawner.cs" />
+    <Compile Include="WindowBase.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

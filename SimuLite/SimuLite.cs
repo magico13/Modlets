@@ -10,11 +10,11 @@ namespace SimuLite
     [KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
     public class SimuLiteLoader : MonoBehaviour
     {
-        public void Awake()
+        public void Start()
         {
             if (!HighLogic.LoadedSceneIsFlight)
             { //Don't load the backup if currently in the flight scene
-                SimuLite.LoadBackupFile();
+                SimuLite.LoadBackupFile(HighLogic.LoadedScene);
             }
         }
     }
@@ -22,52 +22,109 @@ namespace SimuLite
     [KSPAddon(KSPAddon.Startup.FlightAndEditor, false)]
     public class SimuLite : MonoBehaviour
     {
-        public static SimuLite Instance { get; set; }
+        public static SimuLite Instance { get; private set; }
         public const string BACKUP_FILENAME = "SimuLite_backup";
 
+        #region Fields
+        private double lastUT = -1;
+        #endregion Fields
+
+
         #region Public Properties
-        public bool IsSimulating { get; set; } = false;
-        public double RemainingCoreHours { get; set; } = 0;
-        public double CurrentComplexity { get; set; } = 0;
+        
         #endregion Public Properties
 
 
         public void Awake()
         {
-            if (Instance == null)
+            if (Instance != null && Instance != this)
+            {
+                Destroy(this);
+                return;
+            }
+            else
             {
                 Instance = this;
             }
-            showSimulationSetup = HighLogic.LoadedSceneIsEditor; //hacky hack for now
+            if (HighLogic.LoadedSceneIsEditor) //hacky hack for now
+            {
+                simConfigWindow.Show();
+            }
+
         }
 
+        public void Update()
+        {
+            if (!HighLogic.LoadedSceneIsFlight || !StaticInformation.IsSimulating)
+            {
+                return;
+            }
+            //remove some corehours based on how much time has passed since the last frame
+            double UT = Planetarium.GetUniversalTime();
+            StaticInformation.RemainingCoreHours -= (UT - lastUT) * StaticInformation.CurrentComplexity;
+            lastUT = UT;
+
+            if (StaticInformation.RemainingCoreHours <= 0)
+            {
+                //pause. Popup message saying out of time, purchase more or revert
+            }
+
+
+            if (PauseMenu.isOpen) //close the regular pause menu
+            {
+                PauseMenu.Close();
+            }
+            if (GameSettings.PAUSE.GetKey()) //if paused, show our window
+            {   
+                pauseWindow.Show(); //show ours
+            }
+
+        }
 
         #region GUI Code
-        public bool showSimulationSetup { get; set; }
-        private Rect setupWindow = new Rect((Screen.width - 300) / 2, (Screen.height / 4), 300, 1);
         private SimulationConfigWindow simConfigWindow = new SimulationConfigWindow();
+        private PauseWindow pauseWindow = new PauseWindow();
 
         private void OnGUI()
         {
-            if (showSimulationSetup)
-            {
-                setupWindow = GUILayout.Window(8234, setupWindow, simConfigWindow.Draw, "Simulation Setup");
-            }
+            simConfigWindow.OnGUIHandler();
+            pauseWindow.OnGUIHandler();
         }
         #endregion GUI Code
 
         #region Public Methods
-        public void SetSimulationProperties(double complexity)
+        public void ActivateSimulation(double complexity)
         {
-            IsSimulating = true;
-            CurrentComplexity = complexity;
+            MakeBackupFile();
+            StaticInformation.IsSimulating = true;
+            StaticInformation.CurrentComplexity = complexity;
+            activateSimulationLocks();
+            lastUT = Planetarium.GetUniversalTime();
         }
-        #endregion Public Methods
 
-        #region Static Methods
-        public static bool LoadBackupFile()
+        public void DeactivateSimulation(bool returnToEditor)
         {
-            string finalPath = Path.Combine(HighLogic.SaveFolder, BACKUP_FILENAME);
+            if (!StaticInformation.IsSimulating)
+            {
+                return;
+            }
+
+            StaticInformation.IsSimulating = false;
+
+            deactivateSimulationLocks();
+
+            GameScenes targetScene = HighLogic.LoadedScene;
+            if (returnToEditor) //if we should return to the editor, then do that rather than the current scene
+            {
+                targetScene = GameScenes.EDITOR;
+            }
+
+            LoadBackupFile(targetScene);
+        }
+
+        public static bool LoadBackupFile(GameScenes targetScene)
+        {
+            string finalPath = KSPUtil.ApplicationRootPath + "saves/" + HighLogic.SaveFolder + "/" + BACKUP_FILENAME + ".sfs";
             if (File.Exists(finalPath))
             { //Load the backup file if it exists
                 ConfigNode lastShip = ShipConstruction.ShipConfig;
@@ -75,7 +132,7 @@ namespace SimuLite
 
                 Game newGame = GamePersistence.LoadGame(BACKUP_FILENAME, HighLogic.SaveFolder, true, false);
                 GamePersistence.SaveGame(newGame, "persistent", HighLogic.SaveFolder, SaveMode.OVERWRITE);
-                GameScenes targetScene = HighLogic.LoadedScene;
+                //GameScenes targetScene = HighLogic.LoadedScene;
                 newGame.startScene = targetScene;
 
                 // This has to be before... newGame.Start()
@@ -101,10 +158,28 @@ namespace SimuLite
             return false;
         }
 
-        public static void MakeBackupFile()
+        public void MakeBackupFile()
         {
             GamePersistence.SaveGame(BACKUP_FILENAME, HighLogic.SaveFolder, SaveMode.OVERWRITE);
         }
-        #endregion Static Methods
+
+        #endregion Public Methods
+
+        #region Private Methods
+        private void activateSimulationLocks()
+        {
+            string pre = "SIMULITE_";
+            InputLockManager.SetControlLock(ControlTypes.QUICKLOAD, pre + "QUICKLOAD");
+            InputLockManager.SetControlLock(ControlTypes.QUICKSAVE, pre + "QUICKSAVE");
+        }
+
+        private void deactivateSimulationLocks()
+        {
+            string pre = "SIMULITE_";
+            InputLockManager.RemoveControlLock(pre + "QUICKLOAD");
+            InputLockManager.RemoveControlLock(pre + "QUICKSAVE");
+        }
+
+        #endregion Private Methods
     }
 }

@@ -256,9 +256,7 @@ namespace SimuLite
         /// </summary>
         public void StartSimulation()
         {
-            SimuLite.MakeBackupFile();
-
-            SimuLite.Instance.SetSimulationProperties(Complexity);
+            SimuLite.Instance.ActivateSimulation(Complexity);
 
             setGameUT();
             if (!OrbitalSimulation)
