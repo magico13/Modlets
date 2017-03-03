@@ -21,6 +21,7 @@ namespace SimuLite
             GUILayout.BeginVertical();
             if (GUILayout.Button("Revert To Editor"))
             {
+                base.Close();
                 SimuLite.Instance.DeactivateSimulation(true);
             }
             //if (GUILayout.Button("Restart Simulation")) //This is a harder thing to do, but we have to do it eventually
@@ -30,7 +31,6 @@ namespace SimuLite
             if (GUILayout.Button("Cancel"))
             {
                 Close();
-                UnPause();
             }
             GUILayout.EndVertical();
         }
