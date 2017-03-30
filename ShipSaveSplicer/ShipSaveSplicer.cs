@@ -62,20 +62,20 @@ namespace ShipSaveSplicer
             }
 
             //get the selected craft
-            Vessel selectedVessel = null;
-
             SpaceTracking trackingStation = (SpaceTracking)FindObjectOfType(typeof(SpaceTracking));
+            Vessel selectedVessel = trackingStation.SelectedVessel;
 
-            foreach (FieldInfo f in trackingStation.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
-            {
-                if (f.FieldType == typeof(Vessel))
-                {
-                    //FYI: the first one (0) is the currently selected vessel
-                    //The second one (1) is the one that the mouse is hovering over
-                    selectedVessel = f.GetValue(trackingStation) as Vessel;
-                    break;
-                }
-            }
+            //1.2 made this non-private
+            //foreach (FieldInfo f in trackingStation.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+            //{
+            //    if (f.FieldType == typeof(Vessel))
+            //    {
+            //        //FYI: the first one (0) is the currently selected vessel
+            //        //The second one (1) is the one that the mouse is hovering over
+            //        selectedVessel = f.GetValue(trackingStation) as Vessel;
+            //        break;
+            //    }
+            //}
 
             if (ctrlHeld || includeCrew) //ctrl or modifier held
             {
