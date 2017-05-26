@@ -133,7 +133,7 @@ namespace ShipSaveSplicer
             options[count] = new DialogGUIButton("Close", Dummy);
             string msg = "Select a vessel to convert to a .craft file.";
 
-            MultiOptionDialog a = new MultiOptionDialog(msg, "Convert Vessel to .craft", null, options);
+            MultiOptionDialog a = new MultiOptionDialog("convertPopup", msg, "Convert Vessel to .craft", null, options);
             PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), a, false, HighLogic.UISkin);
         }
 
@@ -151,7 +151,7 @@ namespace ShipSaveSplicer
                     StringBuilder msg = new StringBuilder("The selected vessel cannot be converted because it contains the following invalid parts (perhaps you removed a mod?):\n");
                     foreach (string invalid in invalidParts)
                         msg.Append("    ").AppendLine(invalid);
-                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "Missing Parts", msg.ToString(), "Ok", false, HighLogic.UISkin);
+                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "missingPartsPopup", "Missing Parts", msg.ToString(), "Ok", false, HighLogic.UISkin);
                     return;
                 }
                 //clear out all crew on vessel
@@ -262,7 +262,7 @@ namespace ShipSaveSplicer
             string msg = "Select a vessel to import. Will " + (includeCrew ? "" : "not ") + "import crew members.";// +(includeCrew ? "": " (modifier+click the SSS button to include crew)");
             //TODO: Reenable when fixed
 
-            MultiOptionDialog a = new MultiOptionDialog(msg, "Import Vessel", null, options);
+            MultiOptionDialog a = new MultiOptionDialog("importPopup", msg, "Import Vessel", null, options);
             PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), a, false, HighLogic.UISkin);
         }
 
@@ -282,7 +282,7 @@ namespace ShipSaveSplicer
                     string msg = "The selected vessel cannot be imported because it contains the following invalid parts (perhaps you removed a mod?):\n";
                     foreach (string invalid in invalidParts)
                         msg += "    " + invalid + "\n";
-                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "Missing Parts", msg, "Ok", false, HighLogic.UISkin);
+                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "missingPartsPopup", "Missing Parts", msg, "Ok", false, HighLogic.UISkin);
                     return;
                 }
 
@@ -352,7 +352,7 @@ namespace ShipSaveSplicer
 
                         StripCrew(vesselNode);
 
-                        PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "Error Occurred", 
+                        PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "errorPopup", "Error Occurred", 
                             "Unable to import crew. An exception occurred and has been logged.",
                             "Ok", false, HighLogic.UISkin);
 

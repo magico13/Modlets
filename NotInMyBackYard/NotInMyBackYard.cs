@@ -73,7 +73,7 @@ namespace NotInMyBackYard
             //popup "error"
             Debug.Log("!!Too far to recover!");
 
-            PopupDialog.SpawnPopupDialog(new Vector2(), new Vector2(), 
+            PopupDialog.SpawnPopupDialog(new Vector2(), new Vector2(), "tooFarPopup",
                 "Vessel Too Far", $"Vessel is too far from any Recovery Beacons to recover. Closest Recovery Beacon is {closestBeacon.name} and is {(shortestDistance/1000).ToString("N2")}km away.", 
                 "OK", false, HighLogic.UISkin);
         }

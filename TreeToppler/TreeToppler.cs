@@ -37,7 +37,7 @@ namespace TreeToppler
                     options.Add(new DialogGUIButton("Disable Costs", DisableCosts));
                     options.Add(new DialogGUIButton("Lock All Nodes", LockAll));
                     options.Add(new DialogGUIButton("Cancel", DummyVoid));
-                    MultiOptionDialog diag = new MultiOptionDialog("What would you like to do?", "Tree Toppler", null, options.ToArray());
+                    MultiOptionDialog diag = new MultiOptionDialog("treeTopplerPopup", "What would you like to do?", "Tree Toppler", null, options.ToArray());
                     PopupDialog.SpawnPopupDialog(diag, false, HighLogic.UISkin);
                 }
 
