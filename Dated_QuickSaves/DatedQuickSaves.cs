@@ -45,10 +45,6 @@ namespace DatedQuickSaves
 
         void DoWork()
         {
-            //Copy the quicksave file and append the in-game UT
-            // (of the file, or the current one?)
-            //let's use current UT for now
-
             DoCheck = false;
             timer = 0;
 
@@ -58,13 +54,11 @@ namespace DatedQuickSaves
             if (!System.IO.File.Exists(quicksave))
                 return;
 
-           // string time = FormattedTime(Planetarium.GetUniversalTime());
-
-           // string newName = "/quicksave_"+time+".sfs";
             string newName = MagiCore.StringTranslation.AddFormatInfo(config.fileTemplate, "DatedQuickSaves", config.dateFormat);
 
             System.IO.File.Copy(quicksave, saveFolder+"/"+newName+".sfs");
             Debug.Log("Copied quicksave to " + newName);
+            ScreenMessages.PostScreenMessage("Quicksaved to '" + newName + ".sfs'");
 
             SavedQSFiles.Add(newName);
             PurgeExtraneousFiles();
@@ -143,11 +137,9 @@ namespace DatedQuickSaves
                 while (SavedQSFiles.Count > tgtQS)
                 {
                     //purge oldest (top one)
-                    string oldest = SavedQSFiles[0]+".sfs";
-                    if (System.IO.File.Exists(saveFolder+oldest))
-                    {
-                        System.IO.File.Delete(saveFolder + oldest);
-                    }
+                    string oldest = SavedQSFiles[0];
+                    System.IO.File.Delete(saveFolder + oldest + ".sfs");
+                    System.IO.File.Delete(saveFolder + oldest + ".loadmeta");
                     SavedQSFiles.RemoveAt(0);
                     purgedQS++;
                 }
@@ -157,11 +149,9 @@ namespace DatedQuickSaves
                 while (SavedASFiles.Count > tgtAS)
                 {
                     //purge oldest (top one)
-                    string oldest = SavedASFiles[0] + ".sfs";
-                    if (System.IO.File.Exists(saveFolder + oldest))
-                    {
-                        System.IO.File.Delete(saveFolder + oldest);
-                    }
+                    string oldest = SavedASFiles[0];
+                    System.IO.File.Delete(saveFolder + oldest + ".sfs");
+                    System.IO.File.Delete(saveFolder + oldest + ".loadmeta");
                     SavedASFiles.RemoveAt(0);
                     purgedAS++;
                 }
@@ -226,7 +216,7 @@ namespace DatedQuickSaves
     }
 }
 /*
-Copyright (C) 2016  Michael Marvin
+Copyright (C) 2017  Michael Marvin
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
