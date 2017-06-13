@@ -11,7 +11,7 @@ for (( i=0; i<${arrLen}; i++ )); do
   cp "${b}"/bin/Release/*.dll build/GameData/"${d}"/
   cd build
   zip -r "${d}".zip GameData
-  cp "${d}".zip ../
+  mv "${d}".zip ../
   cd ..
   rm -r build/GameData/*
 done
