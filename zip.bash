@@ -9,6 +9,9 @@ for (( i=0; i<${arrLen}; i++ )); do
   b="${builds[$i]}"
   cp -r GameData/"${d}" build/GameData
   cp "${b}"/bin/Release/*.dll build/GameData/"${d}"/
-  zip -r "${d}".zip build/GameData
+  cd build
+  zip -r "${d}".zip GameData
+  cp "${d}".zip ../
+  cd ..
   rm -r build/GameData/*
 done
