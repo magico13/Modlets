@@ -9,7 +9,7 @@ for (( i=0; i<${arrLen}; i++ )); do
   b="${builds[$i]}"
   m=${magiCore[$i]}
   cp -r GameData/"${d}" build/GameData
-  cp "${b}"/bin/Release/*.dll build/GameData/"${d}"/
+  cp "${b}"/obj/Release/*.dll build/GameData/"${d}"/
   rm -f build/GameData/"${d}"/MagiCore.dll
 
   if [ ${m} -eq 1 ]; then
