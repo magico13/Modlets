@@ -6,25 +6,40 @@ namespace EditorTime
     [KSPAddon(KSPAddon.Startup.EditorAny, false)]
     public class EditorTime : MonoBehaviour
     {
-        string configFilePath = KSPUtil.ApplicationRootPath + "/GameData/EditorTime/PluginData/config.txt";
+        string configFilePath = string.Empty;
         float timeRatio = 1.0F;
         DateTime lastUpdate = DateTime.MaxValue;
         bool drawing = false;
         Rect timeWindow = new Rect((Screen.width / 2) + 300, -30, 125, 1);
 
+        public void Awake()
+        {
+            configFilePath = KSPUtil.ApplicationRootPath + "/GameData/EditorTime/PluginData/config.txt";
+        }
 
         public void Start()
         {
-            ConfigNode config = ConfigNode.Load(configFilePath);
+            ConfigNode config = null;
+            if (System.IO.File.Exists(configFilePath))
+            {
+                config = ConfigNode.Load(configFilePath);
+            }
             float x = (Screen.width / 2) + 300, y = -30;
             if (config != null)
             {
                 //Get the timeRatio from the config file
-                float.TryParse(config.GetValue("timeRatio"), out timeRatio);
+                if (!float.TryParse(config.GetValue("timeRatio"), out timeRatio))
+                {
+                    timeRatio = 1f;
+                }
                 if (!float.TryParse(config.GetValue("WindowX"), out x))
+                {
                     x = (Screen.width / 2) + 300;
+                }
                 if (!float.TryParse(config.GetValue("WindowY"), out y))
+                {
                     y = -30;
+                }
             }
 
             lastUpdate = DateTime.Now;
@@ -66,6 +81,8 @@ namespace EditorTime
             //RenderingManager.RemoveFromPostDrawQueue(0, DrawTimeWindow);
             drawing = false;
 
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(configFilePath));
+
             //Save the settings
             ConfigNode config = new ConfigNode();
             config.AddValue("timeRatio", timeRatio);
@@ -101,7 +118,7 @@ namespace EditorTime
 }
 
 /*
-Copyright (C) 2015  Michael Marvin
+Copyright (C) 2017  Michael Marvin
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
