@@ -47,7 +47,7 @@ namespace NotInMyBackYard
             double delLat = (latitude - vessel.latitude) * Math.PI / 180;
             double delLon = (longitude - vessel.longitude) * Math.PI / 180;
             double lat1 = latitude * Math.PI / 180;
-            double lat2 = vessel.longitude * Math.PI / 180;
+            double lat2 = vessel.latitude * Math.PI / 180;
 
             double a = Math.Pow(Math.Sin(delLat / 2), 2) + Math.Cos(lat1) * Math.Cos(lat2) * Math.Pow(Math.Sin(delLon / 2), 2);
             double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
