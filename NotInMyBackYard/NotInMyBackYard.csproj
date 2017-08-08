@@ -48,7 +48,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Beacon.cs" />
+    <Compile Include="StaticBeacon.cs" />
+    <Compile Include="IBeacon.cs" />
+    <Compile Include="ModuleMobileBeacon.cs" />
     <Compile Include="NotInMyBackYard.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
