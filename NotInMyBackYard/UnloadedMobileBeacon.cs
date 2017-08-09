@@ -5,35 +5,14 @@ using System.Text;
 
 namespace NotInMyBackYard
 {
-    /// <summary>
-    /// This module represents a Beacon that is on a part. It has a limited range (only works when actively loaded), doesn't work on its own vessel,
-    /// requires a lab and antenna, and requires an Engineer Kerbal to be present
-    /// </summary>
-    public class ModuleMobileRecoveryBeacon : PartModule, IBeacon
+    public class UnloadedMobileBeacon : IBeacon
     {
-        public bool StrictRequirementsMet
-        {
-            get
-            {
-                //make sure the vessel is loaded
-                //if (!vessel.loaded || vessel.packed)
-                //{
-                //    return false;
-                //}
-                if (vessel.isActiveVessel) //can't be the active vessel
-                {
-                    return false;
-                }
-
-                return Active;
-            }
-        }
-
+        private Vessel _vessel = null;
         public string Name
         {
             get
             {
-                return vessel.GetDisplayName();
+                return _vessel.GetDisplayName();
             }
             set { }
         }
@@ -42,7 +21,7 @@ namespace NotInMyBackYard
         {
             get
             {
-                return vessel.latitude;
+                return _vessel.latitude;
             }
             set { }
         }
@@ -51,7 +30,7 @@ namespace NotInMyBackYard
         {
             get
             {
-                return vessel.longitude;
+                return _vessel.longitude;
             }
             set { }
         }
@@ -69,14 +48,21 @@ namespace NotInMyBackYard
         {
             get
             {
-                return NotInMyBackYard.MobileBeaconRequirementsMet(vessel);
+                return NotInMyBackYard.MobileBeaconRequirementsMet(_vessel);
             }
+
             set { }
         }
 
+        public UnloadedMobileBeacon(Vessel vessel)
+        {
+            _vessel = vessel;
+        }
+
+
         public bool CanRecoverVessel(Vessel vessel)
         {
-            return StrictRequirementsMet && GreatCircleDistance(vessel.mainBody.Radius, vessel.latitude, vessel.longitude) < Range;
+            return vessel.id != _vessel.id && GreatCircleDistance(vessel.mainBody.Radius, vessel.latitude, vessel.longitude) < Range;
         }
 
         public double GreatCircleDistance(double radius, double latitude, double longitude)

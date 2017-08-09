@@ -12,6 +12,7 @@ namespace NotInMyBackYard
         protected Button.ButtonClickedEvent originalCallback;
 
         public List<IBeacon> StaticBeacons { get; set; } = new List<IBeacon>();
+        public static double MobileBeaconRange { get; set; } = 2000;
 
         public void Start()
         {
@@ -53,15 +54,17 @@ namespace NotInMyBackYard
             IBeacon closestBeacon = null; //Used for if we're not in range of any beacons
             double shortestDistance = double.PositiveInfinity;
 
-            
-
             foreach (IBeacon beacon in GetAllBeacons())
             {
-                if (!beacon.Active)
+                if (!beacon.Active || beacon.Range <= 0)
                 {
                     continue;
                 }
                 double distance = beacon.GreatCircleDistance(vessel);
+                double adjustedDistance = distance - beacon.Range;
+
+                Debug.Log($"[NIMBY] {beacon.Name} is {(distance / 1000).ToString("N2")}({(adjustedDistance / 1000).ToString("N2")})km away.");
+
                 if (beacon.CanRecoverVessel(vessel))
                 {
                     originalCallback.Invoke();
@@ -69,9 +72,9 @@ namespace NotInMyBackYard
                 }
                 else
                 {
-                    if (distance > 0 && distance < shortestDistance) //the > 0 checks that it isn't the active vessel
+                    if (distance > 0 && adjustedDistance < shortestDistance) //the > 0 checks that it isn't the active vessel
                     {
-                        shortestDistance = distance;
+                        shortestDistance = adjustedDistance;
                         closestBeacon = beacon;
                     }
                 }
@@ -84,7 +87,8 @@ namespace NotInMyBackYard
             string closestMessage = "There are no Recovery Beacons nearby.";
             if (closestBeacon != null)
             {
-                closestMessage = $"Closest Recovery Beacon is {closestBeacon.Name} and is {(shortestDistance / 1000).ToString("N2")}km away.";
+                double dist = closestBeacon.GreatCircleDistance(vessel) / 1000;
+                closestMessage = $"Closest Recovery Beacon is {closestBeacon.Name} and is {(dist).ToString("N2")}km away ({(dist-closestBeacon.Range/1000).ToString("N2")}km to edge of Beacon's range).";
             }
 
             PopupDialog.SpawnPopupDialog(new Vector2(), new Vector2(), "tooFarPopup",
@@ -99,17 +103,24 @@ namespace NotInMyBackYard
             
 
             //find all vessels that have a mobile beacon module
-            foreach (Vessel vessel in FlightGlobals.Vessels.Where(v => v.Parts.Exists(p => p.Modules.Contains(nameof(ModuleMobileRecoveryBeacon))))) //this all requires it to be loaded to function. Ideally we wouldn't require that
+            foreach (Vessel vessel in FlightGlobals.Vessels)
             {
                 //make sure it's active
                 IEnumerable<ModuleMobileRecoveryBeacon> modules;
-                if ((modules = vessel.Parts.Select(p => p.Modules.GetModule<ModuleMobileRecoveryBeacon>())) != null)
+                if (vessel.loaded && (modules = vessel.Parts.Select(p => p.Modules.GetModule<ModuleMobileRecoveryBeacon>())) != null)
                 {
+                    Debug.Log($"[NIMBY] {vessel.GetDisplayName()} has module");
                     IBeacon active = modules.FirstOrDefault(m => m.Active);
                     if (active != null)
                     {
+                        Debug.Log($"[NIMBY] Module is Active.");
                         beacons.Add(active);
                     }
+                }
+                else if (MobileBeaconRequirementsMet(vessel))
+                {
+                    Debug.Log($"[NIMBY] Adding unloaded Beacon for {vessel.GetDisplayName()}.");
+                    beacons.Add(new UnloadedMobileBeacon(vessel));
                 }
             }
             Debug.Log($"[NIMBY] Counting {staticBeacons} static beacons and {beacons.Count - staticBeacons} mobile beacons.");
@@ -129,6 +140,40 @@ namespace NotInMyBackYard
             double d = radius * c;
 
             return Math.Sqrt(d * d);
+        }
+
+        public static bool MobileBeaconRequirementsMet(Vessel vessel)
+        {
+            //Check that it's on Kerbin/Earth/whatever
+            if (vessel.mainBody != Planetarium.fetch.Home)
+            {
+                return false;
+            }
+            //check for the module on the vessel
+            if (!vessel.protoVessel.protoPartSnapshots.Exists(p => p.modules.Exists(m => m.moduleName == nameof(ModuleMobileRecoveryBeacon))))
+            {
+                //Debug.Log($"[NIMBY] {vessel.GetDisplayName()} doesn't have a recovery module.");
+                return false;
+            }
+            //check for a lab on the vessel
+            if (!vessel.protoVessel.protoPartSnapshots.Exists(p => p.modules.Exists(m => m.moduleName == nameof(ModuleScienceLab))))
+            {
+                //Debug.Log($"[NIMBY] {vessel.GetDisplayName()} doesn't have a science lab.");
+                return false;
+            }
+            //Check for an antenna on the vessel
+            if (!vessel.protoVessel.protoPartSnapshots.Exists(p => p.modules.Exists(m => m.moduleName == nameof(ModuleDataTransmitter))))
+            {
+                //Debug.Log($"[NIMBY] {vessel.GetDisplayName()} doesn't have an antenna.");
+                return false;
+            }
+            //Has an Engineer aboard
+            if (!vessel.GetVesselCrew().Exists(c => c.trait == "Engineer"))
+            {
+                //Debug.Log($"[NIMBY] {vessel.GetDisplayName()} doesn't have an engineer.");
+                return false;
+            }
+            return true;
         }
     }
 
