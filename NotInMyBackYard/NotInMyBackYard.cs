@@ -17,7 +17,7 @@ namespace NotInMyBackYard
         public void Start()
         {
             //initialize beacons
-            LoadBeacons(KSPUtil.ApplicationRootPath+"/GameData/NIMBY/Beacons.cfg", true);
+            LoadBeacons(KSPUtil.ApplicationRootPath+"/GameData/NIMBY/PluginData/Beacons.cfg", true);
         }
 
         public void LoadBeacons(string beaconFile, bool createIfNotExists = false)
@@ -105,12 +105,16 @@ namespace NotInMyBackYard
             //find all vessels that have a mobile beacon module
             foreach (Vessel vessel in FlightGlobals.Vessels)
             {
+                if (vessel == FlightGlobals.ActiveVessel)
+                {
+                    continue;
+                }
                 //make sure it's active
                 IEnumerable<ModuleMobileRecoveryBeacon> modules;
                 if (vessel.loaded && (modules = vessel.Parts.Select(p => p.Modules.GetModule<ModuleMobileRecoveryBeacon>())) != null)
                 {
                     Debug.Log($"[NIMBY] {vessel.GetDisplayName()} has module");
-                    IBeacon active = modules.FirstOrDefault(m => m.Active);
+                    IBeacon active = modules?.FirstOrDefault(m => m?.Active ?? false);
                     if (active != null)
                     {
                         Debug.Log($"[NIMBY] Module is Active.");
