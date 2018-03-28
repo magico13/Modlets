@@ -11,35 +11,33 @@ namespace ShipSaveSplicer
     [KSPAddon(KSPAddon.Startup.TrackingStation, false)]
     public class ShipSaveSplicer : MonoBehaviour
     {
-        public static ApplicationLauncherButton theButton;
-        public static bool includeCrew = false;
-        private static bool EventAdded = false;
+        private static ApplicationLauncherButton _theButton;
+        private static bool _includeCrew = false;
+        private static bool _eventAdded = false;
         public void Start()
         {
             //add button to the Stock toolbar
-            if (!EventAdded)
+            if (!_eventAdded)
             {
                 GameEvents.onGUIApplicationLauncherReady.Add(AddButton);
-                EventAdded = true;
+                _eventAdded = true;
             }
-
-            //AddButton();
         }
 
         public void OnDestroy()
         {
-            if (theButton != null)
+            if (_theButton != null)
             {
-                ApplicationLauncher.Instance.RemoveModApplication(theButton);
-                theButton = null;
+                ApplicationLauncher.Instance.RemoveModApplication(_theButton);
+                _theButton = null;
             }
         }
 
         public void AddButton()
         {
-            if (ApplicationLauncher.Ready && theButton == null)
+            if (ApplicationLauncher.Ready && _theButton == null && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
             {
-                theButton = ApplicationLauncher.Instance.AddModApplication(
+                _theButton = ApplicationLauncher.Instance.AddModApplication(
                     OnClick,
                     Dummy, Dummy, Dummy, Dummy, Dummy, ApplicationLauncher.AppScenes.TRACKSTATION, GameDatabase.Instance.GetTexture("ShipSaveSplicer/icon", false));
             }
@@ -50,14 +48,14 @@ namespace ShipSaveSplicer
         public void OnClick()
         {
             //figure out if mod+clicked
-            //includeCrew = GameSettings.MODIFIER_KEY.GetKey(); //TODO: Reenable when fixed
-            includeCrew = false;
+            _includeCrew = GameSettings.MODIFIER_KEY.GetKey();
+            //includeCrew = false;
             bool ctrlHeld = Input.GetKey(KeyCode.LeftControl);
 
             if (Input.GetKey(KeyCode.LeftShift))
             {
                 OpenConvertWindow(); //convert ships to craft files
-                theButton.SetFalse();
+                _theButton.SetFalse();
                 return;
             }
 
@@ -65,7 +63,7 @@ namespace ShipSaveSplicer
             SpaceTracking trackingStation = (SpaceTracking)FindObjectOfType(typeof(SpaceTracking));
             Vessel selectedVessel = trackingStation.SelectedVessel;
 
-            if (ctrlHeld || includeCrew) //ctrl or modifier held
+            if (ctrlHeld || _includeCrew) //ctrl or modifier held
             {
                 OpenImportWindow();
             }
@@ -74,7 +72,7 @@ namespace ShipSaveSplicer
                 ExportSelectedCraft(selectedVessel);
             }
 
-            theButton.SetFalse(false);
+            _theButton.SetFalse(false);
         }
 
         public void ExportSelectedCraft(Vessel vessel)
@@ -82,6 +80,8 @@ namespace ShipSaveSplicer
             CreateFolder();
 
             string filename = KSPUtil.ApplicationRootPath + "/Ships/export/" + HighLogic.SaveFolder + "_" + vessel.vesselName;
+            Log($"Exporting vessel: {vessel.vesselName}\nExporting to file: {filename}");
+
             ConfigNode nodeToSave = new ConfigNode();
 
             //save vessel
@@ -116,7 +116,7 @@ namespace ShipSaveSplicer
             for (int i = 0; i < count; i++)
             {
                 int select = i;
-                options[i] = new DialogGUIButton(files[i].Split('/').Last(), () => { ConvertVessel(files[select]); });
+                options[i] = new DialogGUIButton(files[i].Split('/').Last(), () => { ConvertToCraft(files[select]); });
             }
             options[count] = new DialogGUIButton("Close", Dummy);
             string msg = "Select a vessel to convert to a .craft file.";
@@ -125,21 +125,17 @@ namespace ShipSaveSplicer
             PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), a, false, HighLogic.UISkin);
         }
 
-        public void ConvertVessel(string name)
+        public void ConvertToCraft(string name)
         {
             if (System.IO.File.Exists(name))
             {
+                Log($"Converting ship to craft file: {name}");
                 ConfigNode storedNode = ConfigNode.Load(name);
 
                 ConfigNode vesselNode = storedNode.GetNode("VESSEL");
 
-                List<string> invalidParts = InvalidParts(vesselNode);
-                if (invalidParts.Count > 0) //contains invalid parts and can't be loaded
+                if (WarnOfInvalidParts(vesselNode, false))
                 {
-                    StringBuilder msg = new StringBuilder("The selected vessel cannot be converted because it contains the following invalid parts (perhaps you removed a mod?):\n");
-                    foreach (string invalid in invalidParts)
-                        msg.Append("    ").AppendLine(invalid);
-                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "missingPartsPopup", "Missing Parts", msg.ToString(), "Ok", false, HighLogic.UISkin);
                     return;
                 }
                 //clear out all crew on vessel
@@ -165,14 +161,13 @@ namespace ShipSaveSplicer
             ProtoVessel VesselToSave = HighLogic.CurrentGame.AddVessel(VesselNode);
             if (VesselToSave.vesselRef == null)
             {
-                Debug.LogError("Vessel reference is null!");
+                Log("Vessel reference is null!");
                 return;
             }
 
             try
             {
                 string ShipName = VesselToSave.vesselName;
-                // Debug.LogWarning("Saving: " + ShipName);
 
                 //Vessel FromFlight = FlightGlobals.Vessels.Find(v => v.id == VesselToSave.vesselID);
                 try
@@ -182,7 +177,7 @@ namespace ShipSaveSplicer
                 catch (Exception ex)
                 {
                     Debug.LogException(ex);
-                    Debug.Log("Attempting to continue.");
+                    Log("Attempting to continue.");
                 }
 
                 ShipConstruct ConstructToSave = new ShipConstruct(ShipName, "", VesselToSave.vesselRef.Parts[0]);
@@ -247,8 +242,7 @@ namespace ShipSaveSplicer
                 options[i] = new DialogGUIButton(files[i].Split('/').Last(), () => { ImportVessel(files[select]); });
             }
             options[count] = new DialogGUIButton("Close", Dummy);
-            string msg = "Select a vessel to import. Will " + (includeCrew ? "" : "not ") + "import crew members.";// +(includeCrew ? "": " (modifier+click the SSS button to include crew)");
-            //TODO: Reenable when fixed
+            string msg = string.Format("Select a vessel to import. Will {0}import crew.{1}", (_includeCrew ? string.Empty : "not "), (_includeCrew ? string.Empty : "\n(modifier+click the SSS button to include crew)"));
 
             MultiOptionDialog a = new MultiOptionDialog("importPopup", msg, "Import Vessel", null, options);
             PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), a, false, HighLogic.UISkin);
@@ -258,25 +252,21 @@ namespace ShipSaveSplicer
         {
             if (System.IO.File.Exists(name))
             {
+                Log($"Importing vessel: {name}");
                 ConfigNode storedNode = ConfigNode.Load(name);
 
                 ConfigNode vesselNode = storedNode.GetNode("VESSEL");
 
                 vesselNode.SetValue("pid", Guid.NewGuid().ToString());
 
-                List<string> invalidParts = InvalidParts(vesselNode);
-                if (invalidParts.Count > 0) //contains invalid parts and can't be loaded
+                if (WarnOfInvalidParts(vesselNode, true))
                 {
-                    string msg = "The selected vessel cannot be imported because it contains the following invalid parts (perhaps you removed a mod?):\n";
-                    foreach (string invalid in invalidParts)
-                        msg += "    " + invalid + "\n";
-                    PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "missingPartsPopup", "Missing Parts", msg, "Ok", false, HighLogic.UISkin);
                     return;
                 }
 
+                List<ProtoCrewMember> crewAdded = new List<ProtoCrewMember>();
 
-
-                if (!includeCrew)
+                if (!_includeCrew)
                 {
                     //clear out all crew on vessel
                     StripCrew(vesselNode);
@@ -294,29 +284,35 @@ namespace ShipSaveSplicer
                                 foreach (ConfigNode.Value crewValue in partNode.values)//(string crewmember in partNode.GetValues("crew"))
                                 {
                                     if (crewValue.name != "crew")
+                                    {
                                         continue;
+                                    }
+
                                     string crewmember = crewValue.value;
                                     //find the confignode saved with the vessel
                                     ConfigNode crewNode = storedNode.GetNodes("CREW")?.FirstOrDefault(c => c.GetValue("name") == crewmember);
                                     if (crewNode == null || crewNode.GetValue("type") != "Crew") //if no data or is tourist then remove from ship
                                     {
                                         //can't find the required data, so remove that kerbal from the ship
+                                        Log($"Vessel occupant is not crew: {crewmember}");
                                         toRemove.Add(crewmember);
                                         continue;
                                     }
 
 
                                     ProtoCrewMember newCrew = new ProtoCrewMember(HighLogic.CurrentGame.Mode, crewNode, ProtoCrewMember.KerbalType.Crew);
-                                    if (HighLogic.CurrentGame.CrewRoster.Crew.FirstOrDefault(c => c.name == crewmember) != null) //there's already a kerbal with that name (sadness :( )
+                                    if (HighLogic.CurrentGame.CrewRoster.Exists(crewmember)) //there's already a kerbal with that name (sadness :( )
                                     {
                                         //alright, rename this kerbal to a new name
                                         string newName = RenameKerbal(crewmember);
                                         newCrew.ChangeName(newName);
                                         crewValue.value = newName;
                                     }
+                                    Log($"Creating crewmember {newCrew.name}");
                                     //add the crew member to the crew roster
                                     //the function to do this is hidden for some reason. yay!
                                     HighLogic.CurrentGame.CrewRoster.AddCrewMember(newCrew); //no longer hidden! MORE YAY!
+                                    crewAdded.Add(newCrew);
                                 }
                                 foreach (string crewmember in toRemove) //remove all crews that shouldn't be here anymore
                                 {
@@ -325,6 +321,7 @@ namespace ShipSaveSplicer
                                     {
                                         if (val.name == "crew" && val.value == crewmember)
                                         {
+                                            Log($"Removing non-valid crew member {val.value}");
                                             partNode.values.Remove(val);
                                             break;
                                         }
@@ -335,7 +332,7 @@ namespace ShipSaveSplicer
                     }
                     catch (Exception ex)
                     {
-                        Debug.Log("[ShipSaveSplicer] Encountered exception while transferring crew. The exception follows. Stripping crew data.");
+                        Log("Encountered exception while transferring crew. The exception follows. Stripping crew data.");
                         Debug.LogException(ex);
 
                         StripCrew(vesselNode);
@@ -349,15 +346,19 @@ namespace ShipSaveSplicer
                 }
 
                 ProtoVessel addedVessel = HighLogic.CurrentGame.AddVessel(vesselNode);
-                //we might have to assign the kerbals to the vessel here
-
-            //related issue, in 1.2.2 (at least) we fail validation of assignments when there are two ships with the same part ids (guessing).
-            //All I know is that if I terminate the original flight, I can import crew. Otherwise it NREs when I save.
+                foreach (ProtoCrewMember crew in crewAdded)
+                {
+                    Log($"Assigning {crew.name}");
+                    addedVessel.AddCrew(crew);
+                }
+                //In 1.2.2+ saving fails when there are two copies of a ship with crew onboard both. Might be part ID related.
+                //All I know is that if I terminate the original flight, I can import crew. Otherwise it NREs when it tries to save the flight state.
             }
         }
 
         private void StripCrew(ConfigNode vesselNode)
         {
+            Log("Stripping out crew information");
             foreach (ConfigNode partNode in vesselNode.GetNodes("PART"))
             {
                 if (partNode.HasValue("crew"))
@@ -395,7 +396,9 @@ namespace ShipSaveSplicer
         {
             string filename = KSPUtil.ApplicationRootPath + "/Ships/export/";
             if (!System.IO.Directory.Exists(filename))
+            {
                 System.IO.Directory.CreateDirectory(filename);
+            }
         }
 
         public List<string> InvalidParts(ConfigNode vesselNode)
@@ -408,19 +411,49 @@ namespace ShipSaveSplicer
             {
                 string partName = PartNameFromNode(partNode);
                 if (!invalid.Contains(partName) && PartLoader.getPartInfoByName(partName) == null) //don't add duplicates
+                {
                     invalid.Add(partName);
+                }
             }
             return invalid;
+        }
+
+        public bool WarnOfInvalidParts(ConfigNode vesselNode, bool importing)
+        {
+            List<string> invalidParts = InvalidParts(vesselNode);
+            if (invalidParts.Count > 0)
+            {
+                string action = importing ? "impoerted" : "converted";
+                StringBuilder msg = new StringBuilder($"The selected vessel cannot be {action} because it contains the following invalid parts (perhaps you removed a mod?):").AppendLine();
+                foreach (string invalid in invalidParts)
+                {
+                    msg.Append("    ").AppendLine(invalid);
+                }
+
+                PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "missingPartsPopup", "Missing Parts", msg.ToString(), "Ok", false, HighLogic.UISkin);
+                return true;
+            }
+            return false;
         }
 
         public string PartNameFromNode(ConfigNode part)
         {
             string name = part.GetValue("part");
             if (name != null)
+            {
                 name = name.Split('_')[0];
+            }
             else
+            {
                 name = part.GetValue("name");
+            }
+
             return name;
+        }
+
+        public void Log(object msg)
+        {
+            Debug.Log("[ShipSaveSplicer] " + msg.ToString());
         }
 
         /* The following is directly from Claw's InflightShipSave and credit goes to the original author */
@@ -467,11 +500,11 @@ namespace ShipSaveSplicer
             {
                 string PartName = ((CN.GetValue("part")).Split('_'))[0];
 
-                Debug.LogWarning("PART: " + PartName);
+                Log("PART: " + PartName);
 
                 Part NewPart = PartLoader.getPartInfoByName(PartName).partPrefab;
                 ConfigNode NewPartCN = new ConfigNode();
-                Debug.LogWarning("New Part: " + NewPart.name);
+                Log("New Part: " + NewPart.name);
 
                 NewPart.InitializeModules();
 
@@ -510,7 +543,7 @@ namespace ShipSaveSplicer
     }
 }
 /*
-Copyright (C) 2017  Michael Marvin
+Copyright (C) 2018  Michael Marvin
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
