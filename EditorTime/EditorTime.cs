@@ -3,117 +3,48 @@ using UnityEngine;
 
 namespace EditorTime
 {
-    [KSPAddon(KSPAddon.Startup.EditorAny, false)]
+    [KSPAddon(KSPAddon.Startup.EditorAny, false)] 
     public class EditorTime : MonoBehaviour
     {
-        string configFilePath = string.Empty;
-        float timeRatio = 1.0F;
-        DateTime lastUpdate = DateTime.MaxValue;
-        bool drawing = false;
-        Rect timeWindow = new Rect((Screen.width / 2) + 300, -30, 125, 1);
+        public Settings settings;
+        public TimeKeeper timeKeeper;
+        public TimeWindow timeWindow;
 
         public void Awake()
         {
-            configFilePath = KSPUtil.ApplicationRootPath + "/GameData/EditorTime/PluginData/config.txt";
+            settings = new Settings();
+            timeKeeper = new TimeKeeper(settings);
+            timeWindow = new TimeWindow(settings, timeKeeper);
         }
 
         public void Start()
         {
-            ConfigNode config = null;
-            if (System.IO.File.Exists(configFilePath))
-            {
-                config = ConfigNode.Load(configFilePath);
-            }
-            float x = (Screen.width / 2) + 300, y = -30;
-            if (config != null)
-            {
-                //Get the timeRatio from the config file
-                if (!float.TryParse(config.GetValue("timeRatio"), out timeRatio))
-                {
-                    timeRatio = 1f;
-                }
-                if (!float.TryParse(config.GetValue("WindowX"), out x))
-                {
-                    x = (Screen.width / 2) + 300;
-                }
-                if (!float.TryParse(config.GetValue("WindowY"), out y))
-                {
-                    y = -30;
-                }
-            }
+            settings.Initialize();
 
-            lastUpdate = DateTime.Now;
-            timeWindow.x = x;
-            timeWindow.y = y;
+            timeKeeper.Start();
 
-            Debug.Log("[EditorTime] timeRatio is " + timeRatio);
-            if (!drawing)
-            {
-                //Draw the current time window
-                //RenderingManager.AddToPostDrawQueue(0, DrawTimeWindow);
-                drawing = true;
-            }
+            timeWindow.visible = true;
         }
 
         public void FixedUpdate()
         {
-            if (lastUpdate != DateTime.MaxValue)
-            {
-                //Get and save the current time 
-                //(we don't call this repeatedly, as it might return slightly different values at various points in the execution and we don't want to lose any time)
-                DateTime now = DateTime.Now;
-                //Get the amount of time that has passed since the last update
-                double timeDelta = (now - lastUpdate).TotalMilliseconds / 1000.0;
-                //Multiply the time passed (in seconds) by the timeRatio
-                timeDelta *= timeRatio;
-
-                //Update the in-game time
-                HighLogic.CurrentGame.flightState.universalTime += timeDelta;
-
-                //Make sure we update the lastUpdate to now
-                lastUpdate = now;
-            }
+            timeKeeper.Update();
         }
 
         public void OnDestroy()
         {
-            lastUpdate = DateTime.MaxValue;
-            //RenderingManager.RemoveFromPostDrawQueue(0, DrawTimeWindow);
-            drawing = false;
+            timeKeeper.Stop();
 
-            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(configFilePath));
+            timeWindow.visible = false;
 
-            //Save the settings
-            ConfigNode config = new ConfigNode();
-            config.AddValue("timeRatio", timeRatio);
-            config.AddValue("WindowX", timeWindow.x);
-            config.AddValue("WindowY", timeWindow.y);
-            config.Save(configFilePath);
+            settings.Save();
         }
 
         public void OnGUI()
         {
-            DrawTimeWindow();
+            timeWindow.Draw();
         }
-
-        public void DrawTimeWindow()
-        {
-            //Actually draw the window
-            timeWindow = GUILayout.Window(1936342, timeWindow, TimeWindow, "Current Time", HighLogic.Skin.window);
-        }
-
-        public void TimeWindow(int windowID)
-        {
-            //All this defines the window itself
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace(); //This setup will center the text in the window
-            GUILayout.Label(KSPUtil.PrintDateCompact((int)HighLogic.CurrentGame.flightState.universalTime, true, true), HighLogic.Skin.label);
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-
-            //Allow the window to be dragged around
-            GUI.DragWindow();
-        }
+        
     }
 }
 
